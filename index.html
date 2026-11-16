@@ -1,0 +1,2043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Content Security Policy updated to allow blob workers for PWA -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; worker-src 'self' blob:;">
+    
+    <title>QuizMaster - Secured Practice & Quizzes</title>
+    
+    <!-- PWA Meta Tags & Manifest -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" id="pwa-manifest">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- CryptoJS for AES Encryption -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles & Transitions */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        .view-section:not(.active) {
+            display: none !important;
+        }
+        
+        .view-section.active {
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.99); filter: blur(2px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        /* Radio button custom styling */
+        .radio-custom:checked + div {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .radio-custom:checked + div .radio-circle {
+            border-color: #3b82f6;
+        }
+        .radio-custom:checked + div .radio-circle::after {
+            content: '';
+            display: block;
+            width: 10px;
+            height: 10px;
+            background: #3b82f6;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Toast notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            min-width: 250px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 4px solid #3b82f6;
+            background: white;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left-color: #10b981; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.install { border-left-color: #8b5cf6; } /* Purple for install prompt */
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-gradient::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, transparent 60%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- APP LOCK OVERLAY -->
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900 z-[999] flex flex-col items-center justify-center hidden">
+        <div class="bg-white p-8 sm:p-10 rounded-2xl shadow-2xl max-w-md w-full mx-4 border-t-4 border-brand-600">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 text-3xl mx-auto mb-4 shadow-inner">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 tracking-tight">App Locked</h2>
+                <p class="text-slate-500 mt-2 text-sm">Your question bank is encrypted. Please enter your master password to unlock.</p>
+            </div>
+            
+            <form onsubmit="event.preventDefault(); attemptUnlock();" class="space-y-5">
+                <div>
+                    <div class="relative">
+                        <input type="password" id="unlock-password" class="w-full bg-slate-50 border border-slate-300 text-slate-900 py-3 px-4 pl-10 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors" placeholder="Master Password" required>
+                        <i class="fas fa-lock absolute left-3.5 top-3.5 text-slate-400"></i>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-md shadow-brand-500/30 active:scale-95">
+                    Unlock Application
+                </button>
+            </form>
+            
+            <div class="mt-6 border-t border-slate-100 pt-6 text-center">
+                <button onclick="confirmFactoryReset()" class="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors">
+                    Forgot password? Factory Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container"></div>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-slate-200 z-40 flex-shrink-0 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center cursor-pointer" onclick="switchView('home')">
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <span class="font-extrabold text-xl tracking-tight text-slate-900">QuizMaster</span>
+                    </div>
+                </div>
+                <!-- Desktop Menu -->
+                <div class="hidden md:ml-6 md:flex md:space-x-4 lg:space-x-8 items-center">
+                    <button onclick="switchView('home')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="home">Home</button>
+                    <button onclick="switchView('practice')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="practice">Practice</button>
+                    <button onclick="switchView('exam-list')" class="nav-btn border-transparent text-slate-500 hover:border-purple-500 hover:text-purple-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="exam-list">Exam Mode</button>
+                    <button onclick="switchView('manage')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="manage">Manage Bank</button>
+                    <button onclick="switchView('about')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="about">About</button>
+                    
+                    <div class="h-6 w-px bg-slate-200 mx-1 lg:mx-2"></div>
+                    
+                    <button onclick="openSecurityModal()" class="text-slate-400 hover:text-brand-600 transition-colors" title="Security Settings">
+                        <i class="fas fa-shield-alt text-lg" id="nav-lock-icon"></i>
+                    </button>
+                    
+                    <button onclick="switchView('create')" class="bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm hover:shadow active:scale-95 flex items-center gap-2 whitespace-nowrap ml-2">
+                        <i class="fas fa-plus"></i> <span>Add Questions</span>
+                    </button>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="flex items-center md:hidden gap-3">
+                    <button onclick="openSecurityModal()" class="text-slate-400 hover:text-brand-600 transition-colors">
+                        <i class="fas fa-shield-alt text-lg" id="nav-lock-icon-mobile"></i>
+                    </button>
+                    <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-500 hover:text-brand-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500 transition-colors" onclick="toggleMobileMenu()">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu panel -->
+        <div class="md:hidden hidden bg-white border-t border-slate-100 absolute w-full shadow-lg z-50 origin-top" id="mobile-menu">
+            <div class="pt-2 pb-4 space-y-1">
+                <button onclick="switchView('home'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">Home</button>
+                <button onclick="switchView('practice'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">Practice Quizzes</button>
+                <button onclick="switchView('exam-list'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-600 w-full text-left transition-colors">Exam Mode</button>
+                <button onclick="switchView('manage'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">Manage Bank</button>
+                <button onclick="switchView('about'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">About & Guide</button>
+                <div class="px-4 mt-4">
+                    <button onclick="switchView('create'); toggleMobileMenu()" class="flex items-center justify-center gap-2 w-full px-4 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-md text-base font-medium transition-colors shadow-sm">
+                        <i class="fas fa-plus"></i> Add Questions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow overflow-y-auto relative w-full" id="main-content">
+        
+        <!-- ==================== HOME VIEW ==================== -->
+        <section id="home" class="view-section active min-h-full flex flex-col pb-10">
+            <!-- Hero Section -->
+            <div class="hero-gradient border-b border-brand-100">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-14 w-full text-center relative z-10">
+                    <div class="inline-flex items-center justify-center px-4 py-1.5 mb-6 rounded-full bg-brand-100 text-brand-700 font-semibold text-sm shadow-sm border border-brand-200">
+                        <i class="fas fa-sparkles mr-2 text-brand-500"></i> The Ultimate Practice Tool
+                    </div>
+                    <h1 class="text-4xl tracking-tight font-extrabold text-slate-900 sm:text-5xl md:text-6xl mb-6 leading-tight">
+                        Master Your <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-purple-600">Knowledge</span>
+                    </h1>
+                    <p class="max-w-2xl mx-auto text-base text-slate-600 sm:text-lg md:text-xl mb-10 leading-relaxed">
+                        Prepare for exams, test your skills, and build your own dynamically categorized question bank with ease and security.
+                    </p>
+                    <div class="flex flex-col sm:flex-row sm:justify-center gap-4 max-w-3xl mx-auto">
+                        <button onclick="switchView('practice')" class="w-full flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-medium rounded-lg text-white bg-brand-600 hover:bg-brand-700 md:py-4 md:text-lg shadow-lg shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 active:scale-95">
+                            Start Practicing
+                        </button>
+                        <button onclick="switchView('exam-list')" class="w-full flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 md:py-4 md:text-lg shadow-lg shadow-purple-500/30 transition-all transform hover:-translate-y-0.5 active:scale-95">
+                            <i class="fas fa-stopwatch mr-2"></i> Exam Mode
+                        </button>
+                        <button onclick="switchView('create')" class="w-full flex items-center justify-center px-8 py-3.5 border border-brand-200 text-base font-semibold rounded-lg text-brand-700 bg-white hover:bg-brand-50 md:py-4 md:text-lg transition-all shadow-sm active:scale-95">
+                            Add Questions
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Widgets -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-10">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+                    <!-- Overview Column -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[420px]">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 pb-3 border-b border-slate-100 flex items-center shrink-0">
+                            <i class="fas fa-chart-pie text-brand-500 mr-2 bg-brand-50 p-2 rounded-lg"></i> Bank Overview
+                        </h3>
+                        <div id="home-stats-container" class="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                            <!-- Stats injected via JS -->
+                        </div>
+                        
+                        <!-- NEW: Quick Action Backup Button -->
+                        <div class="mt-4 pt-4 border-t border-slate-100 shrink-0">
+                            <button onclick="exportCSV()" class="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm text-sm">
+                                <i class="fas fa-file-export"></i> Backup & Export Bank
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Questions Column -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[420px]">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 pb-3 border-b border-slate-100 flex items-center shrink-0">
+                            <i class="fas fa-history text-purple-500 mr-2 bg-purple-50 p-2 rounded-lg"></i> Recently Added
+                        </h3>
+                        <div id="home-recent-questions" class="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                            <!-- Recent questions injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== PRACTICE LIST VIEW ==================== -->
+        <section id="practice" class="view-section py-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Practice Topics</h2>
+                        <p class="text-slate-500 mt-1">Select a subject and topic below to start practicing.</p>
+                    </div>
+                    <div class="mt-4 sm:mt-0 w-full sm:w-80">
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-slate-400"></i>
+                            </div>
+                            <input type="text" id="search-quiz" class="focus:ring-brand-500 focus:border-brand-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-md py-2.5 border transition-colors shadow-sm" placeholder="Search subjects or topics..." onkeyup="filterPracticeList()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quiz Grid -->
+                <div id="quiz-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Cards dynamically injected -->
+                </div>
+                
+                <!-- Empty State -->
+                <div id="no-quizzes-state" class="hidden text-center py-24 bg-white rounded-2xl border border-slate-200 border-dashed shadow-sm">
+                    <div class="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-100 shadow-inner">
+                        <i class="fas fa-folder-open text-brand-400 text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-1">No topics found</h3>
+                    <p class="text-slate-500 mb-6 max-w-sm mx-auto">Try adjusting your search term or add more questions to your bank to see them here.</p>
+                    <button onclick="switchView('create')" class="inline-flex items-center px-6 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-brand-600 hover:bg-brand-700 transition-colors active:scale-95">
+                        <i class="fas fa-plus mr-2"></i> Add Questions
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ACTIVE QUIZ VIEW ==================== -->
+        <section id="take-quiz" class="view-section py-10 min-h-full bg-slate-50">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                <!-- Quiz Header -->
+                <div class="bg-white rounded-t-2xl shadow-sm border border-slate-200 p-6 flex justify-between items-start border-b-0 gap-4">
+                    <div class="min-w-0 flex-1">
+                        <h2 id="active-quiz-title" class="text-xl font-bold text-slate-900 break-words leading-tight">Subject - Topic</h2>
+                        <p class="text-sm text-slate-500 mt-1.5 font-medium">Question <span id="current-q-num" class="text-brand-600">1</span> of <span id="total-q-num">10</span></p>
+                    </div>
+                    <button onclick="confirmExitPractice()" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0" title="Exit Practice">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-100 h-2">
+                    <div id="quiz-progress-bar" class="bg-brand-500 h-2 transition-all duration-300 ease-out" style="width: 10%;"></div>
+                </div>
+
+                <!-- Question Container -->
+                <div class="bg-white rounded-b-2xl shadow-sm border border-slate-200 p-6 sm:p-8 flex flex-col">
+                    <h3 id="question-text" class="text-lg sm:text-xl font-semibold text-slate-900 mb-8 break-words leading-relaxed">Question text goes here?</h3>
+                    
+                    <!-- Options -->
+                    <div id="options-container" class="space-y-3 flex-grow">
+                        <!-- Options injected here -->
+                    </div>
+
+                    <div id="practice-explanation" class="hidden mt-6 p-5 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-sm leading-relaxed shadow-sm"></div>
+
+                    <!-- Actions -->
+                    <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+                        <button id="next-btn" onclick="nextQuestion()" class="hidden bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white px-8 py-2.5 rounded-lg font-medium transition-all active:scale-95 flex items-center gap-2 shadow-sm">
+                            Next Question <i class="fas fa-arrow-right text-sm"></i>
+                        </button>
+                        <button id="submit-btn" onclick="submitPractice()" class="hidden bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-8 py-2.5 rounded-lg font-medium transition-all active:scale-95 flex items-center gap-2 shadow-sm">
+                            Submit Practice <i class="fas fa-check text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== QUIZ RESULT VIEW ==================== -->
+        <section id="quiz-result" class="view-section py-12">
+            <div class="max-w-2xl mx-auto px-4 text-center">
+                <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                    <div class="bg-brand-600 py-10 px-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
+                        <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center text-brand-600 text-5xl mx-auto mb-5 shadow-lg relative z-10">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <h2 class="text-3xl font-extrabold text-white tracking-tight relative z-10">Completed!</h2>
+                        <p id="result-quiz-title" class="text-brand-100 mt-2 text-lg break-words px-4 relative z-10 font-medium">Title</p>
+                    </div>
+                    
+                    <div class="p-8 sm:p-10">
+                        <div id="score-display" class="flex justify-center items-center gap-4 mb-8">
+                            <div class="text-center">
+                                <p class="text-sm text-slate-500 font-bold uppercase tracking-widest mb-1">Your Score</p>
+                                <div class="text-6xl font-black text-slate-900"><span id="score-achieved">0</span><span class="text-4xl text-slate-300">/<span id="score-total">0</span></span></div>
+                            </div>
+                        </div>
+
+                        <div id="result-breakdown" class="hidden justify-center gap-3 sm:gap-4 text-sm mb-8 flex-wrap">
+                            <span class="bg-green-50 text-green-700 px-4 py-2 rounded-lg font-semibold border border-green-200 shadow-sm flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> Correct: <span id="res-correct">0</span> (+3)</span>
+                            <span class="bg-red-50 text-red-700 px-4 py-2 rounded-lg font-semibold border border-red-200 shadow-sm flex items-center gap-2"><i class="fas fa-times-circle text-red-500"></i> Wrong: <span id="res-wrong">0</span> (-1)</span>
+                            <span class="bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-semibold border border-slate-200 shadow-sm flex items-center gap-2"><i class="fas fa-minus-circle text-slate-400"></i> Skipped: <span id="res-unattempted">0</span> (0)</span>
+                        </div>
+
+                        <div id="result-message" class="text-xl text-slate-700 mb-10 font-semibold">
+                            Great job!
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row justify-center gap-4">
+                            <button onclick="retakeSession()" class="px-8 py-3 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors active:scale-95">
+                                <i class="fas fa-redo mr-2"></i> Retake <span id="retake-btn-text">Questions</span>
+                            </button>
+                            <button id="browse-more-btn" onclick="switchView('practice')" class="px-8 py-3 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold rounded-xl transition-all shadow-md shadow-brand-500/30 active:scale-95">
+                                <i class="fas fa-list mr-2"></i> Browse More
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== EXAM LIST VIEW ==================== -->
+        <section id="exam-list" class="view-section py-10">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Custom Exam Generator</h2>
+                    <p class="text-slate-500 mt-1">Configure your exam parameters to generate a custom test from your question bank.</p>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+                    <form id="exam-config-form" onsubmit="event.preventDefault(); generateAndStartExam();" class="space-y-8">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div class="space-y-2">
+                                <label class="block text-sm font-bold text-slate-700">Subject</label>
+                                <div class="relative">
+                                    <select id="exam-subject" onchange="updateExamTopicsList()" class="appearance-none w-full bg-white border border-slate-300 text-slate-800 py-3.5 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm font-medium hover:border-purple-300 cursor-pointer">
+                                        <option value="all">All Subjects</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-purple-500">
+                                        <i class="fas fa-chevron-down text-sm"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label class="block text-sm font-bold text-slate-700">Topic / Chapter</label>
+                                <div class="relative">
+                                    <select id="exam-topic" class="appearance-none w-full bg-white border border-slate-300 text-slate-800 py-3.5 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm font-medium hover:border-purple-300 cursor-pointer">
+                                        <option value="all">All Topics</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-purple-500">
+                                        <i class="fas fa-chevron-down text-sm"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="block text-sm font-bold text-slate-700">Number of Questions</label>
+                                <input type="number" id="exam-q-count" min="1" max="100" value="10" class="w-full bg-white border border-slate-300 text-slate-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm font-medium hover:border-purple-300">
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="block text-sm font-bold text-slate-700">Duration (Minutes)</label>
+                                <input type="number" id="exam-duration" min="1" max="180" value="15" class="w-full bg-white border border-slate-300 text-slate-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm font-medium hover:border-purple-300">
+                            </div>
+                        </div>
+
+                        <!-- Info Banner -->
+                        <div class="bg-purple-50 border border-purple-100 rounded-lg p-4 flex gap-3">
+                            <i class="fas fa-info-circle text-purple-600 mt-0.5"></i>
+                            <div>
+                                <h4 class="text-sm font-bold text-purple-900 mb-1">Exam Rules & Security</h4>
+                                <p class="text-xs text-purple-800">Exam mode uses negative marking (+3 correct, -1 wrong, 0 unattempted). Time limits are strictly enforced. <strong>Anti-cheating measures (disabled right-click and copying) are active during exams.</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex justify-end">
+                            <button type="submit" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white px-10 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:scale-95">
+                                <i class="fas fa-magic"></i> Generate & Start Exam
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== EXAM ACTIVE VIEW ==================== -->
+        <section id="exam-active" class="view-section py-10 min-h-full bg-slate-50">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-6">
+                
+                <!-- Main Question Area -->
+                <div class="flex-1 flex flex-col order-2 lg:order-1">
+                    <div class="bg-white rounded-t-2xl shadow-sm border border-slate-200 p-6 flex justify-between items-center border-b-0 gap-4">
+                        <div class="min-w-0 flex-1">
+                            <h2 id="exam-title" class="text-xl font-bold text-slate-900 break-words leading-tight">Exam Title</h2>
+                            <p class="text-sm text-slate-500 mt-1.5 font-medium">Question <span id="exam-current-q-num" class="text-purple-600 font-bold">1</span> of <span id="exam-total-q-num">10</span></p>
+                        </div>
+                        <button onclick="confirmExitExam()" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0" title="Exit Exam">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-b-2xl shadow-sm border border-slate-200 p-6 sm:p-8 flex-grow flex flex-col relative select-none">
+                        <h3 id="exam-question-text" class="text-lg sm:text-xl font-semibold text-slate-900 mb-8 break-words leading-relaxed">Question text?</h3>
+                        
+                        <div id="exam-options-container" class="space-y-3 flex-grow">
+                            <!-- Options injected here -->
+                        </div>
+
+                        <div class="mt-10 flex justify-between gap-4 border-t border-slate-100 pt-6">
+                            <button id="exam-prev-btn" onclick="examPrevQuestion()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-lg font-semibold transition-colors items-center gap-2 flex disabled:opacity-50 disabled:cursor-not-allowed active:scale-95">
+                                <i class="fas fa-arrow-left text-sm"></i> Previous
+                            </button>
+                            <button id="exam-next-btn" onclick="examNextQuestion()" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors items-center gap-2 flex disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-95">
+                                Next <i class="fas fa-arrow-right text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar / Palette -->
+                <div class="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 lg:sticky lg:top-4">
+                        <div class="text-center mb-6 pb-6 border-b border-slate-100">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Time Remaining</span>
+                            <div id="exam-timer" class="text-5xl font-mono font-black text-slate-900 mt-2 tracking-tight">00:00</div>
+                        </div>
+                        
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center justify-between">
+                            Question Navigator
+                            <span class="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full" id="exam-palette-progress">0/10</span>
+                        </h4>
+                        
+                        <div id="exam-palette" class="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-5 gap-2 mb-8 max-h-48 overflow-y-auto lg:max-h-[300px] pr-1 custom-scrollbar">
+                            <!-- Palette buttons injected here -->
+                        </div>
+                        
+                        <button onclick="confirmSubmitExam()" class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 shadow-md shadow-green-500/20 active:scale-95">
+                            <i class="fas fa-check-double"></i> Submit Exam
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================== MANAGE BANK VIEW ==================== -->
+        <section id="manage" class="view-section py-10 min-h-full">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <h2 class="text-3xl font-bold text-slate-900 tracking-tight break-words">Manage Question Bank</h2>
+                        <p class="text-slate-500 mt-1 break-words">View all questions, organized by subject and topic, or remove them.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3 shrink-0">
+                        <input type="file" id="import-csv-file" class="hidden" accept=".csv" onchange="importCSV(event)">
+                        <button onclick="document.getElementById('import-csv-file').click()" class="flex-1 sm:flex-none px-5 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap active:scale-95">
+                            <i class="fas fa-file-import text-blue-600"></i> Import CSV
+                        </button>
+
+                        <button onclick="exportCSV()" class="flex-1 sm:flex-none px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap active:scale-95">
+                            <i class="fas fa-file-export"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- NEW: Live Search Bar for Manage Bank -->
+                <div class="mb-6">
+                    <div class="relative rounded-lg shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-slate-400"></i>
+                        </div>
+                        <input type="text" id="manage-search" class="focus:ring-brand-500 focus:border-brand-500 block w-full pl-11 pr-4 py-3.5 sm:text-sm border-slate-300 rounded-xl border transition-colors shadow-sm bg-white" placeholder="Search by question text, subject, or topic..." onkeyup="filterManageList()">
+                    </div>
+                </div>
+
+                <div class="mb-10 bg-blue-50 border border-blue-200 rounded-xl p-6 text-sm text-blue-900 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <i class="fas fa-info-circle text-blue-600 text-2xl mt-0.5 shrink-0"></i>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-blue-900 text-base mb-2 break-words">CSV Bulk Import Guide</h4>
+                            <p class="mb-3 break-words text-blue-800">To import questions into the bank via CSV, ensure your file uses the exact following header format as the first row:</p>
+                            <div class="bg-white border border-blue-200 rounded-md p-3 mb-4 overflow-x-auto shadow-sm">
+                                <code class="text-xs whitespace-nowrap text-slate-800 font-mono font-medium">Subject, Topic, Question Text, Option 1, Option 2, Option 3, Option 4, Option 5, Correct Answer (1-5), Explanation</code>
+                            </div>
+                            <ul class="list-disc pl-5 space-y-1.5 text-blue-800 break-words">
+                                <li><strong>Subject</strong> and <strong>Topic</strong> dynamically categorize questions for exams and practice.</li>
+                                <li><strong>Options:</strong> Provide at least 2 options. Leave Option 3, 4, or 5 blank if not needed.</li>
+                                <li><strong>Correct Answer:</strong> Must be a number (1-5) matching your correct option's position.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="manage-list" class="space-y-6">
+                    <!-- Manage cards injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== CREATE/ADD QUESTIONS VIEW ==================== -->
+        <section id="create" class="view-section py-10 min-h-full">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8 flex-1 min-w-0">
+                    <h2 class="text-3xl font-bold text-slate-900 break-words tracking-tight">Add Questions to Bank</h2>
+                    <p class="text-slate-500 mt-1 break-words">Build your knowledge base. Questions are automatically organized by Subject and Topic.</p>
+                </div>
+
+                <form id="create-quiz-form" onsubmit="event.preventDefault(); saveQuestions();">
+                    <div id="questions-builder-container" class="space-y-6 mb-6 pb-24">
+                        <!-- Questions will be injected here via JS -->
+                    </div>
+
+                    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 md:static md:bg-transparent md:border-0 md:shadow-none md:p-0 md:flex md:flex-row md:justify-between md:items-center">
+                        <div class="max-w-4xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <button type="button" onclick="addQuestionBlock()" class="w-full sm:w-auto px-5 py-2.5 text-brand-700 bg-brand-50 hover:bg-brand-100 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 border border-brand-200 active:scale-95 shadow-sm">
+                                <i class="fas fa-plus-circle"></i> Add Another Question
+                            </button>
+                            <div class="flex w-full sm:w-auto gap-3">
+                                <button type="button" onclick="switchView('practice')" class="flex-1 sm:flex-none px-5 py-2.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition-colors shadow-sm active:scale-95">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="flex-1 sm:flex-none px-8 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2 active:scale-95 shadow-brand-500/30">
+                                    <i class="fas fa-save"></i> Save to Bank
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ==================== ABOUT / GUIDE VIEW ==================== -->
+        <section id="about" class="view-section py-10 min-h-full">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-12 text-center pt-8">
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Welcome to QuizMaster</h2>
+                    <p class="text-lg text-slate-600 max-w-2xl mx-auto">Your comprehensive guide to mastering the platform, building an effective question bank, and securing your data.</p>
+                </div>
+                
+                <div class="space-y-8">
+                    <!-- What is QuizMaster? -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-info-circle text-brand-500 bg-brand-50 p-2 rounded-lg"></i> What is QuizMaster?</h3>
+                        <p class="text-slate-600 mb-4 leading-relaxed">In simple terms, QuizMaster is your personal, highly secure offline testing platform. Instead of creating fixed "quizzes," you build a single massive <strong>Question Bank</strong>. The app then acts like a smart tutor, letting you pull from this bank to practice casually or take strict, timed exams.</p>
+                        <p class="text-slate-600 leading-relaxed">Everything runs directly in your browser. No internet is required once the app is loaded, and your data never leaves your device.</p>
+                    </div>
+
+                    <!-- Step-by-Step Workflow -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-route text-purple-500 bg-purple-50 p-2 rounded-lg"></i> How It Works (Step-by-Step)</h3>
+                        
+                        <div class="space-y-6">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-10 h-10 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-lg border border-brand-200">1</div>
+                                <div>
+                                    <h4 class="text-lg font-bold text-slate-900 mb-1">Build Your Bank</h4>
+                                    <p class="text-sm text-slate-600">Go to <strong>Add Questions</strong> to type them in manually, or use the <strong>Manage Bank</strong> tab to import hundreds of questions at once using a CSV spreadsheet. Questions are automatically sorted by <em>Subject</em> and <em>Topic</em>.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-10 h-10 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-lg border border-brand-200">2</div>
+                                <div>
+                                    <h4 class="text-lg font-bold text-slate-900 mb-1">Practice & Learn</h4>
+                                    <p class="text-sm text-slate-600">Go to the <strong>Practice</strong> tab, pick a topic, and start answering. It's stress-free: there is no timer, no negative marking, and you get instant feedback and explanations the moment you click an option.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-lg border border-purple-200">3</div>
+                                <div>
+                                    <h4 class="text-lg font-bold text-slate-900 mb-1">Take an Exam</h4>
+                                    <p class="text-sm text-slate-600">Ready for the real deal? Go to <strong>Exam Mode</strong>. You choose how many questions and how much time you want. The app will strictly enforce a countdown timer and apply negative marking (+3 for correct, -1 for wrong, 0 for skipped).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manage & CSV Import Guide -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-file-csv text-green-500 bg-green-50 p-2 rounded-lg"></i> Import & Export Data</h3>
+                        <p class="text-slate-600 mb-4 leading-relaxed">You don't have to type questions one by one. You can use Excel or Google Sheets to create your question bank and import it in one click via the <strong>Manage Bank</strong> tab.</p>
+                        
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 mb-4 overflow-x-auto">
+                            <p class="text-sm font-bold text-slate-800 mb-2">CSV Required Header Format (First Row):</p>
+                            <code class="text-xs text-brand-700 font-mono whitespace-nowrap block bg-white p-3 rounded border border-slate-200">Subject, Topic, Question Text, Option 1, Option 2, Option 3, Option 4, Option 5, Correct Answer (1-5), Explanation</code>
+                        </div>
+                        <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                            <li><strong>Correct Answer:</strong> Must be a number. If Option 2 is correct, type <code>2</code>.</li>
+                            <li><strong>Empty Fields:</strong> If a question only has 3 options, just leave the Option 4 and 5 columns blank. Explanations are also optional.</li>
+                            <li><strong>Exporting:</strong> Click <strong>Export CSV</strong> at any time to download a backup spreadsheet of your entire encrypted bank.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Security Feature Info -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-shield-alt text-blue-500 bg-blue-50 p-2 rounded-lg"></i> Security & Privacy</h3>
+                        <p class="text-slate-600 mb-6 leading-relaxed">Your data privacy and test integrity are prioritized. Even though data is stored on your device, it can be locked down.</p>
+                        <ul class="space-y-4 text-sm text-slate-700">
+                            <li class="flex gap-3"><i class="fas fa-lock text-brand-600 mt-1"></i> <div><strong>AES Encryption:</strong> Set a master password via the lock icon in the top right. Your local bank will be fully encrypted (AES) making it unreadable without the password.</div></li>
+                            <li class="flex gap-3"><i class="fas fa-database text-brand-600 mt-1"></i> <div><strong>High-Capacity Storage:</strong> Uses IndexedDB technology, allowing you to securely store tens of thousands of questions directly on your device without hitting typical browser limits.</div></li>
+                            <li class="flex gap-3"><i class="fas fa-user-shield text-brand-600 mt-1"></i> <div><strong>Exam Anti-Cheat:</strong> When Exam Mode is active, standard right-click menus and text-copy functions are automatically disabled to simulate a strict testing environment.</div></li>
+                        </ul>
+                    </div>
+
+                    <!-- App Installation (Android PWA) -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-mobile-alt text-green-500 bg-green-50 p-2 rounded-lg"></i> App Installation (Android)</h3>
+                        <p class="text-slate-600 mb-6 leading-relaxed">QuizMaster is built as a Progressive Web App (PWA). You can install it directly to your Android device for a full-screen, native app experience that works instantly.</p>
+                        
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm">
+                            <h4 class="font-bold text-slate-900 mb-4 text-lg"><i class="fas fa-download mr-2 text-slate-500"></i> How to Install</h4>
+                            
+                            <div id="pwa-file-warning" class="hidden mb-5 bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl text-sm font-medium flex gap-3 items-start shadow-sm">
+                                <i class="fas fa-exclamation-triangle mt-0.5 text-yellow-600 text-lg"></i> 
+                                <div><strong class="block mb-1 text-yellow-900">Local File Detected</strong>You are currently viewing this as a local file. PWA Installation requires a secure server. To install this app on Android, please host this file online over HTTPS (e.g., using GitHub Pages, Vercel, or Netlify).</div>
+                            </div>
+
+                            <ol class="list-decimal pl-5 space-y-3 text-sm text-slate-700">
+                                <li>Open this application using <strong>Google Chrome</strong> on your Android device. <em>(Note: It must be opened directly in a tab, not within an embedded preview or iframe)</em>.</li>
+                                <li>A popup notification should automatically appear at the bottom of your screen saying <strong>"Install QuizMaster"</strong>. Tap the Install button.</li>
+                                <li>If the popup doesn't appear, tap the <strong>3-dot menu</strong> <i class="fas fa-ellipsis-v mx-1 text-slate-400"></i> in the top-right corner of your Chrome browser.</li>
+                                <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong> from the dropdown menu.</li>
+                                <li>Once installed, you can launch QuizMaster directly from your phone's home screen or app drawer, just like a regular native application!</li>
+                            </ol>
+
+                            <div class="mt-6 border-t border-slate-200 pt-5">
+                                <h5 class="font-bold text-slate-900 mb-3 text-sm"><i class="fas fa-globe text-blue-500 mr-1.5"></i> How to get a free HTTPS link</h5>
+                                <p class="text-sm text-slate-600 mb-3">To open this app in HTTPS mode on your Android phone, you need to host this single HTML file online. Here is the easiest free method (takes 10 seconds):</p>
+                                <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                                    <li><strong>Netlify Drop (No account required):</strong> Create a new empty folder on your computer and place this `index.html` file inside it. Go to <a href="https://app.netlify.com/drop" target="_blank" class="text-brand-600 font-bold hover:underline">app.netlify.com/drop</a> on your computer and drag that folder onto the page. Netlify will instantly generate a live, secure HTTPS link. Open that link on your Android phone!</li>
+                                    <li><strong>GitHub Pages:</strong> If you use GitHub, create a repository, upload this file, and enable GitHub Pages in the settings for a permanent free HTTPS link.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100" id="confirm-modal-content">
+            <div class="p-8">
+                <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-6 mx-auto text-2xl shadow-inner border border-red-100">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="text-xl font-bold text-center text-slate-900 mb-2" id="confirm-title">Are you sure?</h3>
+                <p class="text-slate-500 text-center mb-8" id="confirm-msg">Your progress will be lost.</p>
+                <div class="flex gap-3 justify-center">
+                    <button id="confirm-cancel-btn" class="px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-bold transition-colors w-full active:scale-95">Cancel</button>
+                    <button id="confirm-yes-btn" class="px-5 py-2.5 bg-red-600 rounded-xl text-white hover:bg-red-700 font-bold transition-colors w-full shadow-sm shadow-red-500/30 active:scale-95">Yes, Proceed</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Settings Modal -->
+    <div id="security-modal" class="fixed inset-0 bg-slate-900/60 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100" id="security-modal-content">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-slate-900"><i class="fas fa-shield-alt text-brand-600 mr-2"></i> Security Settings</h3>
+                    <button onclick="closeSecurityModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button>
+                </div>
+                
+                <p class="text-sm text-slate-500 mb-6">Protect your question bank by setting a master password. Your data will be encrypted using AES encryption.</p>
+                
+                <form id="security-form" onsubmit="event.preventDefault(); saveSecuritySettings();">
+                    <div id="sec-current-pwd-group" class="mb-4 hidden">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Current Password <span class="text-red-500">*</span></label>
+                        <input type="password" id="sec-current-pwd" class="w-full bg-slate-50 border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-slate-700 mb-1" id="sec-new-label">New Password <span class="text-red-500">*</span></label>
+                        <input type="password" id="sec-new-pwd" class="w-full bg-slate-50 border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Leave blank to remove password">
+                    </div>
+                    
+                    <div class="flex gap-3 mt-8">
+                        <button type="button" onclick="closeSecurityModal()" class="px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-bold transition-colors w-full active:scale-95">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-brand-600 rounded-xl text-white hover:bg-brand-700 font-bold transition-colors w-full shadow-sm shadow-brand-500/30 active:scale-95">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- DATA STRUCTURES & INITIAL STATE ---
+        const DEFAULT_BANK = [
+            { id: 'q_bio1', subject: 'Biology', topic: 'Cell Biology', text: 'Which organelle is known as the powerhouse of the cell?', options: ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi apparatus'], correctIndex: 1, explanation: 'Mitochondria generate most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.' },
+            { id: 'q_bio2', subject: 'Biology', topic: 'Genetics', text: 'What does DNA stand for?', options: ['Deoxyribonucleic Acid', 'Deoxynucleic Acid', 'Diribonucleic Acid', 'Deoxyribose Acid'], correctIndex: 0, explanation: 'DNA is a polymer composed of two polynucleotide chains that coil around each other to form a double helix.' },
+            { id: 'q_bio3', subject: 'Biology', topic: 'Human Anatomy', text: 'How many bones are in the adult human body?', options: ['206', '208', '201', '196', '210'], correctIndex: 0, explanation: 'Adults have 206 bones, while infants are born with around 270 bones which fuse over time.' },
+            { id: 'q_bio4', subject: 'Biology', topic: 'Botany', text: 'What is the process by which plants make their food?', options: ['Respiration', 'Photosynthesis', 'Transpiration', 'Digestion'], correctIndex: 1, explanation: 'Photosynthesis is the process used by plants, algae and certain bacteria to harness energy from sunlight and turn it into chemical energy.' },
+            { id: 'q_geo1', subject: 'Geography', topic: 'World Capitals', text: 'What is the capital of France?', options: ['London', 'Berlin', 'Paris', 'Madrid'], correctIndex: 2 },
+            { id: 'q_geo2', subject: 'Geography', topic: 'Physical Geography', text: 'What is the largest ocean on Earth?', options: ['Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean', 'Pacific Ocean'], correctIndex: 3 },
+            { id: 'q_sci1', subject: 'Science', topic: 'Astronomy', text: 'Which planet is known as the Red Planet?', options: ['Earth', 'Mars', 'Jupiter', 'Venus'], correctIndex: 1 },
+            { id: 'q_web1', subject: 'Web Development', topic: 'HTML', text: 'What does HTML stand for?', options: ['Hyper Text Markup Language', 'High Tech Modern Language', 'Hyperlinks and Text Markup Language', 'Home Tool Markup Language'], correctIndex: 0 },
+            { id: 'q_web2', subject: 'Web Development', topic: 'CSS', text: 'Which CSS property controls the text size?', options: ['font-style', 'text-size', 'font-size', 'text-style'], correctIndex: 2 }
+        ];
+
+        let questionBank = [];
+        
+        // Security State
+        let appPassword = null;
+        let isEncrypted = false;
+
+        // Active Session State
+        let activeSession = { mode: 'practice', title: '', questions: [] };
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let userAnswers = [];
+        let examTimerInterval = null;
+        let examTimeRemaining = 0;
+        let questionBuilderCount = 0;
+        
+        // PWA State
+        let deferredPrompt = null;
+
+        // IndexedDB Helper
+        const dbHelper = {
+            dbName: 'QuizMasterDB',
+            storeName: 'appData',
+            init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, 1);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            db.createObjectStore(this.storeName);
+                        }
+                    };
+                    request.onsuccess = (e) => resolve(e.target.result);
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            },
+            async set(key, value) {
+                const db = await this.init();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(this.storeName, 'readwrite');
+                    const store = tx.objectStore(this.storeName);
+                    const req = store.put(value, key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async get(key) {
+                const db = await this.init();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(this.storeName, 'readonly');
+                    const store = tx.objectStore(this.storeName);
+                    const req = store.get(key);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            async remove(key) {
+                const db = await this.init();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(this.storeName, 'readwrite');
+                    const store = tx.objectStore(this.storeName);
+                    const req = store.delete(key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            }
+        };
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initSecurity();
+            setupAntiCheat();
+            initPWA();
+        });
+
+        // --- PWA LOGIC ---
+        function initPWA() {
+            const isLocalFile = window.location.protocol === 'file:';
+            
+            // 1. Generate dynamic Manifest ensuring correct icons and start_url
+            // Base64 encoded SVG for perfect parsing across all Android Chrome versions
+            const svgIconB64 = "PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgZmlsbD0nIzI1NjNlYicvPjxwYXRoIGQ9J00yNTYgOTZsMjI0IDExMi0yMjQgMTEyTDMyIDIwOGwyMjQtMTEyem0wIDI5OC43bDE2MC04MHY4MGwtMTYwIDgwLTE2MC04MHYtODBsMTYwIDgweicgZmlsbD0nI2ZmZmZmZicvPjwvc3ZnPg==";
+            
+            const manifest = {
+                name: "QuizMaster",
+                short_name: "QuizMaster",
+                id: "quizmaster-app",
+                start_url: "./",
+                display: "standalone",
+                background_color: "#f8fafc",
+                theme_color: "#2563eb",
+                icons: [
+                    {
+                        src: "data:image/svg+xml;base64," + svgIconB64,
+                        sizes: "192x192",
+                        type: "image/svg+xml",
+                        purpose: "any maskable"
+                    },
+                    {
+                        src: "data:image/svg+xml;base64," + svgIconB64,
+                        sizes: "512x512",
+                        type: "image/svg+xml",
+                        purpose: "any maskable"
+                    }
+                ]
+            };
+            
+            // Encode manifest to Base64 to ensure Chrome parses it perfectly
+            const manifestStr = JSON.stringify(manifest);
+            const manifestB64 = btoa(unescape(encodeURIComponent(manifestStr)));
+            
+            let manifestLink = document.getElementById('pwa-manifest');
+            if (manifestLink) {
+                manifestLink.href = 'data:application/manifest+json;base64,' + manifestB64;
+            }
+
+            // Register a dummy Service Worker to trigger the Install Prompt on Android
+            // Exclude file:// because SW registration will throw security errors immediately
+            if ('serviceWorker' in navigator && !isLocalFile) {
+                try {
+                    const swCode = `
+                        const CACHE_NAME = 'quizmaster-cache-v1';
+                        self.addEventListener('install', (e) => self.skipWaiting());
+                        self.addEventListener('activate', (e) => self.clients.claim());
+                        self.addEventListener('fetch', (e) => {
+                            if (e.request.url.startsWith('http') && e.request.method === 'GET') {
+                                e.respondWith(
+                                    caches.match(e.request).then(cached => {
+                                        return cached || fetch(e.request).then(response => {
+                                            const resClone = response.clone();
+                                            caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
+                                            return response;
+                                        });
+                                    }).catch(() => new Response('Offline'))
+                                );
+                            }
+                        });
+                    `;
+                    const blob = new Blob([swCode], {type: 'application/javascript'});
+                    const swUrl = URL.createObjectURL(blob);
+                    navigator.serviceWorker.register(swUrl).catch(err => {
+                        console.log('SW Reg Note: Blob SW registration might fail scope checks, but modern Chrome will still allow install via Manifest.', err);
+                    });
+                } catch (e) {
+                    console.log('SW setup error:', e);
+                }
+            }
+
+            // Listen for the install prompt event
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                // Only show toast if not embedded in an iframe preview (as iframes block prompts)
+                if (window.self === window.top) {
+                    showInstallPrompt();
+                }
+            });
+            
+            // Helpful logging for iframe restriction debugging
+            if (window.self !== window.top) {
+                console.log('QuizMaster is running inside an iframe. PWA install prompts are restricted by the browser. Open the URL directly in a new tab to install.');
+            }
+            
+            // UI Warning for file:// protocol
+            if (isLocalFile) {
+                setTimeout(() => {
+                    const warningEl = document.getElementById('pwa-file-warning');
+                    if (warningEl) warningEl.classList.remove('hidden');
+                }, 500);
+            }
+        }
+
+        function showInstallPrompt() {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast install bg-white text-slate-800 shadow-2xl`;
+            toast.id = 'pwa-install-toast';
+            toast.innerHTML = `
+                <i class="fas fa-mobile-alt text-purple-500 text-2xl"></i>
+                <div class="flex-1">
+                    <p class="font-bold text-sm">Install QuizMaster</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Add to home screen for a better experience</p>
+                </div>
+                <button onclick="installApp()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Install</button>
+                <button onclick="dismissInstall()" class="text-slate-400 hover:text-slate-600 ml-1"><i class="fas fa-times"></i></button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+        }
+
+        function installApp() {
+            const toast = document.getElementById('pwa-install-toast');
+            if(toast) {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User installed the app');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        function dismissInstall() {
+            const toast = document.getElementById('pwa-install-toast');
+            if(toast) {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+
+        // --- SECURITY & ENCRYPTION LOGIC ---
+        async function initSecurity() {
+            // Keep flag in localStorage for instant UI rendering before async DB lookup
+            isEncrypted = localStorage.getItem('quizMaster_is_secured') === 'true';
+            
+            if (isEncrypted) {
+                document.getElementById('auth-overlay').classList.remove('hidden');
+                document.getElementById('unlock-password').focus();
+            } else {
+                await loadData(null);
+                startApp();
+            }
+            updateNavLockIcon();
+        }
+
+        async function attemptUnlock() {
+            const pwd = document.getElementById('unlock-password').value;
+            if (!pwd) return;
+
+            try {
+                const storedEnc = await dbHelper.get('quizMaster_bank_secured');
+                if(!storedEnc) throw new Error("No data found");
+                
+                const bytes = CryptoJS.AES.decrypt(storedEnc, pwd);
+                const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+                
+                if (!decryptedStr) throw new Error("Invalid password");
+                
+                questionBank = JSON.parse(decryptedStr);
+                appPassword = pwd;
+                document.getElementById('auth-overlay').classList.add('hidden');
+                
+                startApp();
+                showToast("Application unlocked successfully!");
+            } catch (e) {
+                showToast("Incorrect password or corrupted data.", "error");
+                document.getElementById('unlock-password').value = '';
+            }
+        }
+
+        async function loadData(password = null) {
+            if (isEncrypted) return; // Handled by unlock
+
+            // Auto-migrate from localStorage to IndexedDB if exists
+            const oldStored = localStorage.getItem('quizMaster_bank');
+            if (oldStored) {
+                try {
+                    questionBank = JSON.parse(oldStored);
+                    await dbHelper.set('quizMaster_bank', oldStored);
+                    localStorage.removeItem('quizMaster_bank'); // Clear old text
+                } catch(e) {
+                    console.error("Migration error");
+                    questionBank = [...DEFAULT_BANK];
+                }
+            } else {
+                const stored = await dbHelper.get('quizMaster_bank');
+                if (stored) {
+                    try {
+                        questionBank = JSON.parse(stored);
+                    } catch(e) {
+                        console.error("Error parsing stored question bank");
+                        questionBank = [...DEFAULT_BANK];
+                    }
+                } else {
+                    questionBank = [...DEFAULT_BANK];
+                    await saveBank();
+                }
+            }
+        }
+
+        async function saveBank() {
+            try {
+                const dataStr = JSON.stringify(questionBank);
+                
+                if (appPassword) {
+                    const encrypted = CryptoJS.AES.encrypt(dataStr, appPassword).toString();
+                    await dbHelper.set('quizMaster_bank_secured', encrypted);
+                    await dbHelper.remove('quizMaster_bank'); // Clear plaintext
+                    localStorage.setItem('quizMaster_is_secured', 'true');
+                    isEncrypted = true;
+                } else {
+                    await dbHelper.set('quizMaster_bank', dataStr);
+                    await dbHelper.remove('quizMaster_bank_secured');
+                    localStorage.setItem('quizMaster_is_secured', 'false');
+                    isEncrypted = false;
+                }
+                updateNavLockIcon();
+            } catch (e) {
+                console.error("Storage error:", e);
+                showToast("Failed to save data. Local storage might be full.", "error");
+            }
+        }
+
+        function updateNavLockIcon() {
+            const iconId = isEncrypted ? 'fa-lock' : 'fa-lock-open';
+            const colorClass = isEncrypted ? 'text-green-500' : 'text-slate-400';
+            
+            const desktopIcon = document.getElementById('nav-lock-icon');
+            const mobileIcon = document.getElementById('nav-lock-icon-mobile');
+            
+            if(desktopIcon) desktopIcon.className = `fas ${iconId} ${colorClass} text-lg`;
+            if(mobileIcon) mobileIcon.className = `fas ${iconId} ${colorClass} text-lg`;
+        }
+
+        function openSecurityModal() {
+            const modal = document.getElementById('security-modal');
+            const content = document.getElementById('security-modal-content');
+            const currPwdGroup = document.getElementById('sec-current-pwd-group');
+            const newLabel = document.getElementById('sec-new-label');
+            
+            document.getElementById('security-form').reset();
+            
+            if (isEncrypted) {
+                currPwdGroup.classList.remove('hidden');
+                document.getElementById('sec-current-pwd').required = true;
+                newLabel.innerHTML = 'New Password (Leave blank to remove security)';
+                document.getElementById('sec-new-pwd').required = false;
+            } else {
+                currPwdGroup.classList.add('hidden');
+                document.getElementById('sec-current-pwd').required = false;
+                newLabel.innerHTML = 'Set Master Password <span class="text-red-500">*</span>';
+                document.getElementById('sec-new-pwd').required = true;
+            }
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; // Reflow
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }
+
+        function closeSecurityModal() {
+            const modal = document.getElementById('security-modal');
+            const content = document.getElementById('security-modal-content');
+            
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        async function saveSecuritySettings() {
+            const currentPwdInput = document.getElementById('sec-current-pwd').value;
+            const newPwdInput = document.getElementById('sec-new-pwd').value;
+            
+            if (isEncrypted) {
+                if (currentPwdInput !== appPassword) {
+                    showToast("Current password is incorrect.", "error");
+                    return;
+                }
+                
+                if (newPwdInput.trim() === '') {
+                    // Remove security
+                    appPassword = null;
+                    await saveBank();
+                    showToast("Security removed. Bank is now unencrypted.");
+                } else {
+                    // Change password
+                    appPassword = newPwdInput;
+                    await saveBank();
+                    showToast("Master password updated successfully.");
+                }
+            } else {
+                // Set new password
+                if (newPwdInput.trim() === '') {
+                    showToast("Password cannot be blank.", "error");
+                    return;
+                }
+                appPassword = newPwdInput;
+                await saveBank();
+                showToast("Security enabled! Your bank is now encrypted.");
+            }
+            
+            closeSecurityModal();
+        }
+
+        async function confirmFactoryReset() {
+            if(confirm("WARNING: This will permanently delete all your encrypted questions and reset the app. This action CANNOT be undone. Proceed?")) {
+                await dbHelper.remove('quizMaster_bank');
+                await dbHelper.remove('quizMaster_bank_secured');
+                localStorage.removeItem('quizMaster_is_secured');
+                location.reload();
+            }
+        }
+
+        // --- ANTI-CHEAT (EXAM MODE) ---
+        function setupAntiCheat() {
+            // Disable Right Click
+            document.addEventListener('contextmenu', event => {
+                if (activeSession.mode === 'exam' && document.getElementById('exam-active').classList.contains('active')) {
+                    event.preventDefault();
+                    showToast("Right-click is disabled during exams to prevent cheating.", "error");
+                }
+            });
+            
+            // Disable Copy
+            document.addEventListener('copy', event => {
+                if (activeSession.mode === 'exam' && document.getElementById('exam-active').classList.contains('active')) {
+                    event.preventDefault();
+                    showToast("Copying text is disabled during exams.", "error");
+                }
+            });
+        }
+
+        // --- CORE UI FUNCTIONS ---
+        function startApp() {
+            document.body.classList.remove('overflow-hidden');
+            const hash = window.location.hash.replace('#', '');
+            if(['home', 'practice', 'exam-list', 'create', 'manage', 'about'].includes(hash)) {
+                switchView(hash);
+            } else {
+                switchView('home');
+            }
+            
+            // Fix: Only add default block if actively loading directly into the create view and none exist
+            if(window.location.hash === '#create' && questionBuilderCount === 0) {
+                addQuestionBlock();
+            }
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            window.location.hash = viewId;
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('border-brand-500', 'text-brand-600', 'border-purple-500', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-slate-500');
+                
+                if(btn.getAttribute('data-target') === viewId) {
+                    btn.classList.remove('border-transparent', 'text-slate-500');
+                    if (viewId === 'exam-list') btn.classList.add('border-purple-500', 'text-purple-600');
+                    else btn.classList.add('border-brand-500', 'text-brand-600');
+                }
+            });
+
+            if(viewId === 'home') renderHomeDashboard();
+            if(viewId === 'practice') renderPracticeList();
+            if(viewId === 'exam-list') populateExamConfig();
+            if(viewId === 'manage') renderManageList();
+            
+            // Fix: Handle block spawning cleanly during tab switches
+            if(viewId === 'create' && questionBuilderCount === 0) {
+                addQuestionBlock();
+            }
+
+            if(viewId !== 'exam-active' && examTimerInterval) {
+                clearInterval(examTimerInterval);
+                examTimerInterval = null;
+            }
+            
+            document.getElementById('main-content').scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? '<i class="fas fa-check-circle text-green-500 text-2xl"></i>' : '<i class="fas fa-exclamation-circle text-red-500 text-2xl"></i>';
+            toast.innerHTML = `${icon}<div><p class="font-bold text-slate-800 text-sm">${message}</p></div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showConfirm(title, msg, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-msg').textContent = msg;
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+            const yesBtn = document.getElementById('confirm-yes-btn');
+
+            const closeModal = () => {
+                modal.classList.add('opacity-0');
+                content.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+                cancelBtn.onclick = null;
+                yesBtn.onclick = null;
+            };
+
+            cancelBtn.onclick = closeModal;
+            yesBtn.onclick = () => { closeModal(); onConfirm(); };
+        }
+
+        // --- DASHBOARD RENDER LOGIC ---
+        function renderHomeDashboard() {
+            const statsContainer = document.getElementById('home-stats-container');
+            const recentContainer = document.getElementById('home-recent-questions');
+            if (!statsContainer || !recentContainer) return;
+
+            const tree = {};
+            questionBank.forEach(q => {
+                const sub = q.subject || 'Uncategorized';
+                const top = q.topic || 'General';
+                if (!tree[sub]) tree[sub] = { count: 0, topics: {} };
+                if (!tree[sub].topics[top]) tree[sub].topics[top] = 0;
+                tree[sub].count++;
+                tree[sub].topics[top]++;
+            });
+
+            let statsHtml = '';
+            const sortedSubjects = Object.keys(tree).sort();
+            
+            if (sortedSubjects.length === 0) {
+                statsHtml = '<div class="h-full flex flex-col items-center justify-center text-slate-400"><i class="fas fa-chart-bar text-4xl mb-3 opacity-50"></i><p class="text-sm font-medium">No subjects added yet.</p></div>';
+            } else {
+                sortedSubjects.forEach(sub => {
+                    statsHtml += `<div class="mb-2 bg-slate-50 rounded-lg border border-slate-100 p-3"><div class="flex justify-between items-center mb-2"><span class="font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-book-open text-brand-500 text-sm"></i> ${escapeHTML(sub)}</span><span class="text-xs bg-brand-100 text-brand-700 px-2.5 py-1 rounded-full font-bold shadow-sm">${tree[sub].count} Qs</span></div><ul class="text-sm text-slate-600 space-y-1.5 pl-5 border-l-2 border-slate-200 ml-1.5">`;
+                    Object.keys(tree[sub].topics).sort().forEach(top => {
+                        statsHtml += `<li class="flex justify-between items-center relative"><span class="absolute -left-[21px] top-1/2 -translate-y-1/2 w-3 h-0.5 bg-slate-200"></span><span class="truncate pr-2 font-medium">${escapeHTML(top)}</span><span class="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-sm">${tree[sub].topics[top]}</span></li>`;
+                    });
+                    statsHtml += `</ul></div>`;
+                });
+            }
+            statsContainer.innerHTML = statsHtml;
+
+            const recentQs = [...questionBank].reverse().slice(0, 15);
+            if (recentQs.length === 0) {
+                recentContainer.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-slate-400"><i class="fas fa-folder-open text-4xl mb-3 opacity-50"></i><p class="text-sm font-medium">No questions added yet.</p></div>';
+                return;
+            }
+
+            let recentHtml = '';
+            recentQs.forEach((q) => {
+                recentHtml += `<div class="p-4 bg-white border border-slate-100 shadow-sm rounded-xl hover:border-purple-300 hover:shadow-md transition-all group cursor-default"><div class="flex flex-wrap items-center mb-2 gap-2"><span class="text-[10px] font-bold uppercase tracking-wider bg-brand-50 border border-brand-100 text-brand-700 px-2 py-1 rounded">${escapeHTML(q.subject)}</span><span class="text-slate-300 text-xs"><i class="fas fa-chevron-right"></i></span><span class="text-[10px] font-bold uppercase tracking-wider bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded">${escapeHTML(q.topic)}</span></div><p class="text-sm font-semibold text-slate-800 line-clamp-2 pr-4 group-hover:text-purple-700 transition-colors">${escapeHTML(q.text)}</p></div>`;
+            });
+            recentContainer.innerHTML = recentHtml;
+        }
+
+        // --- PRACTICE SECTION ---
+        function renderPracticeList() {
+            const filter = document.getElementById('search-quiz').value.toLowerCase();
+            const grid = document.getElementById('quiz-grid');
+            const emptyState = document.getElementById('no-quizzes-state');
+            grid.innerHTML = '';
+            
+            const groups = {};
+            questionBank.forEach(q => {
+                const key = `${q.subject}|${q.topic}`;
+                if (!groups[key]) groups[key] = { subject: q.subject, topic: q.topic, count: 0 };
+                groups[key].count++;
+            });
+
+            const filteredKeys = Object.keys(groups).filter(key => {
+                return groups[key].subject.toLowerCase().includes(filter) || groups[key].topic.toLowerCase().includes(filter);
+            });
+
+            if (filteredKeys.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            filteredKeys.sort().forEach(key => {
+                const group = groups[key];
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col h-full group';
+                card.onclick = () => startPractice(group.subject, group.topic);
+                card.innerHTML = `<div class="flex-grow"><div class="flex justify-between items-start mb-5"><div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl flex-shrink-0 border border-brand-100 shadow-sm"><i class="fas fa-layer-group"></i></div><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 flex-shrink-0 ml-2 border border-slate-200">${group.count} Qs</span></div><h3 class="text-xl font-bold text-slate-900 mb-1 group-hover:text-brand-600 transition-colors truncate">${escapeHTML(group.topic)}</h3><p class="text-sm font-semibold text-slate-500 truncate flex items-center gap-1.5"><i class="fas fa-book text-xs opacity-70"></i> ${escapeHTML(group.subject)}</p></div><div class="mt-6 pt-4 border-t border-slate-100"><span class="text-brand-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">Start Practice <i class="fas fa-arrow-right text-xs"></i></span></div>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterPracticeList() { renderPracticeList(); }
+
+        function startPractice(subject, topic) {
+            const pool = questionBank.filter(q => q.subject === subject && q.topic === topic);
+            if (pool.length === 0) return;
+
+            activeSession = { mode: 'practice', title: `${subject}: ${topic}`, questions: [...pool] };
+            activeSession.questions.sort(() => Math.random() - 0.5);
+            currentQuestionIndex = 0;
+            score = 0;
+            userAnswers = new Array(activeSession.questions.length).fill(null);
+
+            document.getElementById('active-quiz-title').textContent = activeSession.title;
+            document.getElementById('total-q-num').textContent = activeSession.questions.length;
+            switchView('take-quiz');
+            renderActiveQuestion();
+        }
+
+        function renderActiveQuestion() {
+            const question = activeSession.questions[currentQuestionIndex];
+            const selectedOptionIndex = userAnswers[currentQuestionIndex];
+
+            document.getElementById('current-q-num').textContent = currentQuestionIndex + 1;
+            document.getElementById('quiz-progress-bar').style.width = `${((currentQuestionIndex) / activeSession.questions.length) * 100}%`;
+            document.getElementById('question-text').textContent = question.text;
+
+            const explanationBox = document.getElementById('practice-explanation');
+            explanationBox.className = 'hidden mt-6 p-5 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-sm leading-relaxed shadow-sm';
+            explanationBox.innerHTML = '';
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            question.options.forEach((opt, index) => {
+                const label = document.createElement('label');
+                // Added transform scale effects for tactile feedback
+                label.className = "block relative cursor-pointer group transform transition-transform active:scale-[0.98]";
+                const isChecked = selectedOptionIndex === index ? 'checked' : '';
+                label.innerHTML = `<input type="radio" name="active-q-option" class="sr-only radio-custom" value="${index}" onchange="selectOption(${index})" ${isChecked}><div class="p-4 border-2 border-slate-200 rounded-xl group-hover:border-brand-300 transition-colors flex items-center gap-4 bg-white w-full shadow-sm hover:shadow"><div class="radio-circle w-5 h-5 rounded-full border-2 border-slate-300 relative flex-shrink-0 transition-colors bg-slate-50"></div><div class="text-slate-700 font-semibold flex-1 break-words min-w-0">${escapeHTML(opt)}</div></div>`;
+                container.appendChild(label);
+            });
+            updatePracticeButtons();
+        }
+
+        function selectOption(index) {
+            if (userAnswers[currentQuestionIndex] !== null) return; 
+
+            userAnswers[currentQuestionIndex] = index;
+            const question = activeSession.questions[currentQuestionIndex];
+            const isCorrect = index === question.correctIndex;
+
+            const options = document.querySelectorAll('input[name="active-q-option"]');
+            options.forEach((radio, idx) => {
+                radio.disabled = true;
+                const container = radio.nextElementSibling;
+                container.classList.remove('group-hover:border-brand-300', 'hover:shadow');
+                
+                if (idx === question.correctIndex) {
+                    container.className = 'p-4 border-2 border-green-500 bg-green-50 rounded-xl flex items-center gap-4 w-full shadow-sm';
+                    container.innerHTML = `<div class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-check text-xs"></i></div><div class="text-green-800 font-bold flex-1 break-words min-w-0">${escapeHTML(question.options[idx])}</div>`;
+                } else if (idx === index && !isCorrect) {
+                    container.className = 'p-4 border-2 border-red-500 bg-red-50 rounded-xl flex items-center gap-4 w-full shadow-sm';
+                    container.innerHTML = `<div class="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-times text-xs"></i></div><div class="text-red-800 font-bold flex-1 break-words min-w-0">${escapeHTML(question.options[idx])}</div>`;
+                } else {
+                    container.classList.add('opacity-50');
+                }
+            });
+
+            const explanationBox = document.getElementById('practice-explanation');
+            let statusHtml = isCorrect ? 
+                `<span class="font-bold block mb-2 text-green-700 text-base flex items-center gap-1.5"><i class="fas fa-check-circle"></i> Correct!</span>` : 
+                `<span class="font-bold block mb-2 text-red-700 text-base flex items-center gap-1.5"><i class="fas fa-times-circle"></i> Incorrect.</span> The right answer is <strong>${escapeHTML(question.options[question.correctIndex])}</strong>.`;
+            
+            explanationBox.className = isCorrect ? 'mt-6 p-5 bg-green-50 border border-green-200 text-green-900 rounded-xl text-sm leading-relaxed shadow-sm' : 'mt-6 p-5 bg-red-50 border border-red-200 text-red-900 rounded-xl text-sm leading-relaxed shadow-sm';
+
+            if (question.explanation) {
+                explanationBox.innerHTML = `${statusHtml}<div class="pt-3 border-t ${isCorrect ? 'border-green-200/60' : 'border-red-200/60'} mt-3"><span class="font-bold block mb-1 opacity-90 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Explanation:</span> ${escapeHTML(question.explanation)}</div>`;
+            } else {
+                explanationBox.innerHTML = statusHtml;
+            }
+            explanationBox.classList.remove('hidden');
+            updatePracticeButtons();
+        }
+
+        function updatePracticeButtons() {
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            nextBtn.classList.add('hidden');
+            submitBtn.classList.add('hidden');
+
+            if (userAnswers[currentQuestionIndex] !== null) {
+                if (currentQuestionIndex < activeSession.questions.length - 1) nextBtn.classList.remove('hidden');
+                else submitBtn.classList.remove('hidden');
+            }
+        }
+
+        function nextQuestion() {
+            if (userAnswers[currentQuestionIndex] !== null) {
+                currentQuestionIndex++;
+                renderActiveQuestion();
+                document.getElementById('take-quiz').scrollTo({top: 0, behavior: 'smooth'});
+            }
+        }
+
+        function submitPractice() {
+            document.getElementById('quiz-progress-bar').style.width = `100%`;
+            document.getElementById('score-display').classList.add('hidden');
+            
+            const breakdown = document.getElementById('result-breakdown');
+            if (breakdown) { breakdown.classList.remove('flex'); breakdown.classList.add('hidden'); }
+            
+            setTimeout(() => {
+                document.getElementById('result-quiz-title').textContent = activeSession.title;
+                const msgEl = document.getElementById('result-message');
+                msgEl.innerHTML = '<div class="text-green-500 mb-4 text-5xl"><i class="fas fa-check-circle shadow-sm rounded-full"></i></div> Practice session complete! Keep up the good work.';
+                msgEl.className = 'text-2xl font-bold text-slate-800 mb-10 text-center';
+                
+                document.getElementById('retake-btn-text').textContent = 'Questions';
+                const browseBtn = document.getElementById('browse-more-btn');
+                browseBtn.className = "px-8 py-3 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold rounded-xl transition-all shadow-md shadow-brand-500/30 active:scale-95";
+                browseBtn.innerHTML = '<i class="fas fa-list mr-2"></i> Browse More';
+                browseBtn.onclick = () => switchView('practice');
+
+                switchView('quiz-result');
+            }, 300);
+        }
+
+        function retakeSession() {
+            currentQuestionIndex = 0;
+            score = 0;
+            userAnswers = new Array(activeSession.questions.length).fill(null);
+            activeSession.questions.sort(() => Math.random() - 0.5);
+            
+            if (activeSession.mode === 'exam') {
+                const mins = activeSession.durationMins || activeSession.questions.length;
+                examTimeRemaining = mins * 60; 
+                switchView('exam-active');
+                renderExamPalette();
+                renderExamQuestion();
+                startExamTimer();
+            } else {
+                switchView('take-quiz');
+                renderActiveQuestion();
+            }
+        }
+
+        function confirmExitPractice() {
+            showConfirm("Exit Practice?", "Are you sure you want to leave? Your progress will not be saved.", () => switchView('practice'));
+        }
+
+        // --- EXAM MODE LOGIC ---
+        function populateExamConfig() {
+            const subjectSelect = document.getElementById('exam-subject');
+            const subjects = new Set();
+            questionBank.forEach(q => { if(q.subject) subjects.add(q.subject); });
+            
+            subjectSelect.innerHTML = '<option value="all">All Subjects</option>';
+            Array.from(subjects).sort().forEach(sub => {
+                const opt = document.createElement('option'); opt.value = sub; opt.textContent = sub;
+                subjectSelect.appendChild(opt);
+            });
+            updateExamTopicsList();
+        }
+
+        function updateExamTopicsList() {
+            const subjectSelect = document.getElementById('exam-subject').value;
+            const topicSelect = document.getElementById('exam-topic');
+            const topics = new Set();
+
+            questionBank.forEach(q => {
+                if(subjectSelect === 'all' || q.subject === subjectSelect) {
+                    if(q.topic) topics.add(q.topic);
+                }
+            });
+
+            topicSelect.innerHTML = '<option value="all">All Topics</option>';
+            Array.from(topics).sort().forEach(top => {
+                const opt = document.createElement('option'); opt.value = top; opt.textContent = top;
+                topicSelect.appendChild(opt);
+            });
+        }
+
+        function generateAndStartExam() {
+            const selSubject = document.getElementById('exam-subject').value;
+            const selTopic = document.getElementById('exam-topic').value;
+            const qCount = parseInt(document.getElementById('exam-q-count').value) || 10;
+            const durationMins = parseInt(document.getElementById('exam-duration').value) || 15;
+
+            if (qCount <= 0 || durationMins <= 0) return showToast("Count and duration must be greater than 0.", "error");
+
+            let pool = questionBank.filter(q => {
+                return (selSubject === 'all' || q.subject === selSubject) && (selTopic === 'all' || q.topic === selTopic);
+            });
+
+            if (pool.length === 0) return showToast("No questions found for the selected criteria.", "error");
+
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+
+            const selectedQuestions = pool.slice(0, Math.min(qCount, pool.length));
+            activeSession = {
+                mode: 'exam',
+                title: `Custom Exam: ${selSubject === 'all' ? 'Mixed Subjects' : selSubject}`,
+                durationMins: durationMins,
+                questions: selectedQuestions
+            };
+            
+            currentQuestionIndex = 0; score = 0;
+            userAnswers = new Array(activeSession.questions.length).fill(null);
+            examTimeRemaining = durationMins * 60; 
+
+            document.getElementById('exam-title').textContent = activeSession.title;
+            document.getElementById('exam-total-q-num').textContent = activeSession.questions.length;
+            
+            showToast(`Generated exam with ${selectedQuestions.length} questions! Security features active.`);
+            
+            switchView('exam-active');
+            renderExamPalette();
+            renderExamQuestion();
+            startExamTimer();
+        }
+
+        function renderExamQuestion() {
+            const question = activeSession.questions[currentQuestionIndex];
+            const savedAnswer = userAnswers[currentQuestionIndex];
+
+            document.getElementById('exam-current-q-num').textContent = currentQuestionIndex + 1;
+            document.getElementById('exam-question-text').textContent = question.text;
+
+            const container = document.getElementById('exam-options-container');
+            container.innerHTML = '';
+
+            question.options.forEach((opt, index) => {
+                const label = document.createElement('label');
+                // Added transform scale effects for tactile feedback
+                label.className = "block relative cursor-pointer group transform transition-transform active:scale-[0.98]";
+                const isChecked = savedAnswer === index ? 'checked' : '';
+                label.innerHTML = `<input type="radio" name="exam-active-q-option" class="sr-only radio-custom" value="${index}" onchange="examSelectOption(${index})" ${isChecked}><div class="p-4 border-2 border-slate-200 rounded-xl group-hover:border-purple-300 transition-colors flex items-center gap-4 bg-white w-full shadow-sm hover:shadow"><div class="radio-circle w-5 h-5 rounded-full border-2 border-slate-300 relative flex-shrink-0 transition-colors bg-slate-50"></div><div class="text-slate-700 font-semibold flex-1 break-words min-w-0">${escapeHTML(opt)}</div></div>`;
+                container.appendChild(label);
+            });
+
+            document.getElementById('exam-prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('exam-next-btn').disabled = currentQuestionIndex === activeSession.questions.length - 1;
+        }
+
+        function examSelectOption(index) {
+            userAnswers[currentQuestionIndex] = index;
+            renderExamPalette();
+        }
+
+        function renderExamPalette() {
+            const palette = document.getElementById('exam-palette');
+            palette.innerHTML = '';
+            let answeredCount = 0;
+
+            activeSession.questions.forEach((_, idx) => {
+                const btn = document.createElement('button');
+                const isAnswered = userAnswers[idx] !== null;
+                const isCurrent = idx === currentQuestionIndex;
+                if(isAnswered) answeredCount++;
+
+                let baseClass = "w-10 h-10 sm:w-11 sm:h-11 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center transition-colors border shadow-sm ";
+                if (isCurrent) baseClass += "bg-purple-600 text-white border-purple-600 ring-4 ring-purple-200 ring-offset-1";
+                else if (isAnswered) baseClass += "bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200";
+                else baseClass += "bg-white text-slate-600 border-slate-300 hover:bg-slate-50";
+
+                btn.className = baseClass;
+                btn.textContent = idx + 1;
+                btn.onclick = () => jumpToExamQuestion(idx);
+                palette.appendChild(btn);
+            });
+            document.getElementById('exam-palette-progress').textContent = `${answeredCount}/${activeSession.questions.length}`;
+        }
+
+        function jumpToExamQuestion(index) {
+            currentQuestionIndex = index;
+            renderExamQuestion(); renderExamPalette();
+            document.getElementById('main-content').scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function examPrevQuestion() { if (currentQuestionIndex > 0) jumpToExamQuestion(currentQuestionIndex - 1); }
+        function examNextQuestion() { if (currentQuestionIndex < activeSession.questions.length - 1) jumpToExamQuestion(currentQuestionIndex + 1); }
+
+        function startExamTimer() {
+            const timerEl = document.getElementById('exam-timer');
+            if (examTimerInterval) clearInterval(examTimerInterval);
+            
+            const updateDisplay = () => {
+                if (examTimeRemaining <= 0) {
+                    clearInterval(examTimerInterval);
+                    timerEl.textContent = "00:00"; timerEl.classList.add('text-red-600');
+                    showToast("Time is up! Auto-submitting exam...", "error");
+                    setTimeout(() => submitExam(), 1500);
+                    return;
+                }
+                const m = Math.floor(examTimeRemaining / 60); const s = examTimeRemaining % 60;
+                timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                
+                if (examTimeRemaining <= 60) timerEl.classList.add('text-red-600', 'animate-pulse');
+                else timerEl.classList.remove('text-red-600', 'animate-pulse');
+                examTimeRemaining--;
+            };
+            updateDisplay();
+            examTimerInterval = setInterval(updateDisplay, 1000);
+        }
+
+        function confirmSubmitExam() {
+            const unanswered = userAnswers.filter(a => a === null).length;
+            let msg = unanswered > 0 ? `You still have ${unanswered} unanswered question(s). Are you sure you want to submit?` : "Are you sure you want to submit your exam?";
+            showConfirm("Submit Exam", msg, () => submitExam());
+        }
+
+        function submitExam() {
+            if (examTimerInterval) clearInterval(examTimerInterval);
+            
+            let marks = 0, correct = 0, wrong = 0, unattempted = 0;
+            activeSession.questions.forEach((q, idx) => {
+                if (userAnswers[idx] === null) unattempted++;
+                else if (userAnswers[idx] === q.correctIndex) { marks += 3; correct++; } 
+                else { marks -= 1; wrong++; }
+            });
+
+            const maxMarks = activeSession.questions.length * 3;
+            document.getElementById('score-display').classList.remove('hidden');
+            document.getElementById('result-quiz-title').textContent = activeSession.title;
+            document.getElementById('score-achieved').textContent = marks;
+            document.getElementById('score-total').textContent = maxMarks;
+            
+            const breakdown = document.getElementById('result-breakdown');
+            breakdown.classList.remove('hidden'); breakdown.classList.add('flex');
+            document.getElementById('res-correct').textContent = correct;
+            document.getElementById('res-wrong').textContent = wrong;
+            document.getElementById('res-unattempted').textContent = unattempted;
+
+            const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0;
+            const msgEl = document.getElementById('result-message');
+            
+            if(percentage >= 90) { msgEl.innerHTML = 'Exceptional work! <i class="fas fa-star text-yellow-400"></i>'; msgEl.className = 'text-2xl font-black text-green-600 mb-10 text-center'; } 
+            else if (percentage >= 50) { msgEl.textContent = 'Good job! You have a solid understanding.'; msgEl.className = 'text-xl font-bold text-slate-800 mb-10 text-center'; } 
+            else { msgEl.textContent = 'Keep practicing! Negative marking affected your score.'; msgEl.className = 'text-xl font-bold text-red-600 mb-10 text-center'; }
+            
+            document.getElementById('retake-btn-text').textContent = 'Exam';
+            const browseBtn = document.getElementById('browse-more-btn');
+            browseBtn.className = "px-8 py-3 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold rounded-xl transition-all shadow-md shadow-purple-500/30 active:scale-95";
+            browseBtn.innerHTML = '<i class="fas fa-magic mr-2"></i> New Exam';
+            browseBtn.onclick = () => switchView('exam-list');
+            switchView('quiz-result');
+        }
+
+        function confirmExitExam() {
+            showConfirm("Exit Exam?", "Are you sure you want to leave? Your exam progress will be lost.", () => {
+                if (examTimerInterval) clearInterval(examTimerInterval);
+                switchView('exam-list');
+            });
+        }
+
+        // --- QUESTION CREATION LOGIC ---
+        function addQuestionBlock() {
+            questionBuilderCount++;
+            const qId = `qb_${Date.now()}_${questionBuilderCount}`;
+            const container = document.getElementById('questions-builder-container');
+            const block = document.createElement('div');
+            block.className = "question-block bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 relative animation-fade-in";
+            block.id = qId;
+            
+            block.innerHTML = `
+                <div class="flex flex-wrap justify-between items-center mb-6 border-b border-slate-100 pb-3 gap-2"><h4 class="font-extrabold text-slate-900 text-lg"><i class="fas fa-question-circle text-brand-500 mr-1"></i> New Question</h4><button type="button" onclick="removeQuestionBlock('${qId}')" class="text-red-600 bg-red-50 hover:bg-red-100 font-bold text-sm flex items-center gap-2 transition-colors px-3 py-1.5 rounded-lg active:scale-95" title="Remove Question"><i class="fas fa-trash"></i> <span class="hidden sm:inline">Remove</span></button></div>
+                <div class="space-y-5">
+                    <div class="flex flex-col sm:flex-row gap-5">
+                        <div class="flex-1 space-y-1"><label class="block text-sm font-bold text-slate-700">Subject <span class="text-red-500">*</span></label><input type="text" class="qb-sub w-full p-3 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm" placeholder="e.g., Mathematics" required></div>
+                        <div class="flex-1 space-y-1"><label class="block text-sm font-bold text-slate-700">Topic <span class="text-red-500">*</span></label><input type="text" class="qb-top w-full p-3 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm" placeholder="e.g., Algebra" required></div>
+                    </div>
+                    <div class="space-y-1"><label class="block text-sm font-bold text-slate-700">Question Text <span class="text-red-500">*</span></label><input type="text" class="qb-text w-full p-3.5 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm" placeholder="What is...?" required></div>
+                    <div class="bg-brand-50/50 p-5 rounded-xl border border-brand-100"><label class="block text-sm font-bold text-slate-900 mb-3">Options & Correct Answer <span class="text-red-500">*</span></label><div class="space-y-3 pl-2 border-l-2 border-brand-200">
+                        ${[0,1,2,3,4].map(i => `<div class="flex items-center gap-3 w-full group"><input type="radio" name="correct_${qId}" value="${i}" class="w-5 h-5 text-brand-600 focus:ring-brand-500 cursor-pointer flex-shrink-0 border-slate-300 bg-white shadow-sm" ${i===0 ? 'checked' : ''} required><input type="text" class="qb-opt w-full flex-1 p-3 border border-slate-300 bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm min-w-0" placeholder="Option ${i+1} ${i<2?'(Required)': '(Optional)'}" ${i<2?'required':''}></div>`).join('')}
+                    </div></div>
+                    <div class="space-y-1"><label class="block text-sm font-bold text-slate-700">Explanation (Optional)</label><textarea class="qb-exp w-full p-3.5 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-sm custom-scrollbar" rows="2" placeholder="Explain why the correct answer is right..."></textarea></div>
+                </div>`;
+            container.appendChild(block);
+        }
+
+        function removeQuestionBlock(id) {
+            if (document.querySelectorAll('.question-block').length <= 1) return showToast("You must add at least one question to save.", "error");
+            document.getElementById(id).remove();
+        }
+
+        async function saveQuestions() {
+            const blocks = document.querySelectorAll('.question-block');
+            if(blocks.length === 0) return showToast("Add at least one question", "error");
+
+            const newQuestions = [];
+            let isValid = true;
+
+            blocks.forEach(block => {
+                const subject = block.querySelector('.qb-sub').value.trim() || 'Uncategorized';
+                const topic = block.querySelector('.qb-top').value.trim() || 'General';
+                const text = block.querySelector('.qb-text').value.trim();
+                const exp = block.querySelector('.qb-exp').value.trim();
+                const optInputs = block.querySelectorAll('.qb-opt');
+                const correctRadio = block.querySelector(`input[type="radio"]:checked`);
+                
+                if (!text) isValid = false;
+
+                const options = [];
+                optInputs.forEach(input => { if(input.value.trim()) options.push(input.value.trim()); });
+
+                if(options.length < 2) { showToast("Each question needs at least 2 filled options", "error"); isValid = false; return; }
+
+                const selectedCorrectVal = parseInt(correctRadio.value);
+                if(!optInputs[selectedCorrectVal].value.trim()) { showToast("The selected correct answer cannot be blank.", "error"); isValid = false; return; }
+
+                const cleanOptions = []; let newCorrectIndex = 0, pushCount = 0;
+                optInputs.forEach((input, idx) => {
+                    if(input.value.trim()) {
+                        cleanOptions.push(input.value.trim());
+                        if(idx === selectedCorrectVal) newCorrectIndex = pushCount;
+                        pushCount++;
+                    }
+                });
+
+                newQuestions.push({
+                    id: 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
+                    subject: subject, topic: topic, text: text, options: cleanOptions, correctIndex: newCorrectIndex, explanation: exp
+                });
+            });
+
+            if(!isValid) return;
+
+            newQuestions.forEach(q => questionBank.push(q));
+            await saveBank();
+            showToast(`${newQuestions.length} question(s) added to bank!`);
+            
+            document.getElementById('questions-builder-container').innerHTML = '';
+            questionBuilderCount = 0; addQuestionBlock();
+            // Automatically switch back to manage bank so they can see their new questions
+            switchView('manage');
+        }
+
+        // --- MANAGE BANK & IMPORT/EXPORT LOGIC ---
+        
+        function filterManageList() {
+            const searchTerm = document.getElementById('manage-search').value.toLowerCase();
+            renderManageList(searchTerm);
+        }
+
+        function renderManageList(searchTerm = '') {
+            const list = document.getElementById('manage-list');
+            list.innerHTML = '';
+            const tree = {};
+            let matchCount = 0;
+            
+            questionBank.forEach(q => {
+                // Apply search filter
+                if (searchTerm) {
+                    const textMatch = q.text && q.text.toLowerCase().includes(searchTerm);
+                    const subMatch = q.subject && q.subject.toLowerCase().includes(searchTerm);
+                    const topMatch = q.topic && q.topic.toLowerCase().includes(searchTerm);
+                    if (!textMatch && !subMatch && !topMatch) return;
+                }
+                matchCount++;
+
+                const sub = q.subject || 'Uncategorized'; const top = q.topic || 'General';
+                if (!tree[sub]) tree[sub] = {}; if (!tree[sub][top]) tree[sub][top] = [];
+                tree[sub][top].push(q);
+            });
+
+            if (questionBank.length === 0) return list.innerHTML = `<div class="text-center py-20 bg-white rounded-2xl border border-slate-200 border-dashed shadow-sm"><i class="fas fa-folder-open text-4xl text-slate-300 mb-4 block"></i><p class="text-slate-500 font-medium">No questions available in the bank.</p></div>`;
+            
+            if (matchCount === 0 && searchTerm) return list.innerHTML = `<div class="text-center py-20 bg-white rounded-2xl border border-slate-200 border-dashed shadow-sm"><i class="fas fa-search text-4xl text-slate-300 mb-4 block"></i><p class="text-slate-500 font-medium">No questions matched your search criteria.</p></div>`;
+
+            Object.keys(tree).sort().forEach(sub => {
+                const subDiv = document.createElement('div');
+                subDiv.className = 'bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6';
+                let topicsHtml = '';
+                
+                Object.keys(tree[sub]).sort().forEach(top => {
+                    const qList = tree[sub][top];
+                    const topicId = `topic-${Math.random().toString(36).substr(2, 9)}`;
+                    let questionsHtml = qList.map((item, idx) => `
+                        <div class="py-5 border-b border-slate-100 last:border-0 relative group">
+                            <button onclick="confirmDeleteQuestion('${item.id}')" class="absolute right-0 top-5 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-2 py-1.5 rounded transition-colors active:scale-95" title="Delete Question"><i class="fas fa-trash-alt"></i></button>
+                            <p class="text-sm font-bold text-slate-800 break-words mb-3 pr-10 leading-relaxed"><span class="text-slate-400 mr-2">${idx + 1}.</span> ${escapeHTML(item.text)}</p>
+                            <ul class="text-sm font-medium text-slate-600 space-y-1.5 pl-6 list-disc marker:text-slate-300 break-words">
+                                ${item.options.map((o, i) => `<li class="${i === item.correctIndex ? 'text-green-700 font-bold marker:text-green-500' : ''}">${escapeHTML(o)} ${i === item.correctIndex ? '<i class="fas fa-check-circle text-green-500 ml-1"></i>' : ''}</li>`).join('')}
+                            </ul>
+                            ${item.explanation ? `<div class="mt-4 text-sm font-medium text-slate-700 bg-blue-50 p-4 rounded-lg border border-blue-100"><span class="font-bold text-blue-800 block mb-1">Explanation:</span> ${escapeHTML(item.explanation)}</div>` : ''}
+                        </div>
+                    `).join('');
+
+                    topicsHtml += `<div class="border-t border-slate-100 first:border-0"><div class="p-4 bg-slate-50 hover:bg-slate-100 cursor-pointer flex justify-between items-center transition-colors" onclick="toggleQuestions('${topicId}')"><h4 class="font-bold text-slate-800 truncate pr-2"><i class="fas fa-folder text-brand-500 mr-2"></i>${escapeHTML(top)}</h4><span class="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1 rounded-full whitespace-nowrap shadow-sm">${qList.length} Qs</span></div><div id="${topicId}" class="${searchTerm ? '' : 'hidden'} p-4 sm:p-6 bg-white border-t border-slate-100">${questionsHtml}</div></div>`;
+                });
+
+                subDiv.innerHTML = `<div class="p-4 sm:p-6 bg-slate-900 text-white flex justify-between items-center rounded-t-2xl"><h3 class="text-lg font-extrabold flex items-center gap-3 truncate pr-2"><i class="fas fa-book-open text-brand-400"></i> ${escapeHTML(sub)}</h3></div><div>${topicsHtml}</div>`;
+                list.appendChild(subDiv);
+            });
+        }
+
+        function confirmDeleteQuestion(qId) {
+            showConfirm("Delete Question?", "Are you sure you want to permanently delete this question?", async () => {
+                const originalLength = questionBank.length;
+                questionBank = questionBank.filter(q => q.id !== qId);
+                if(questionBank.length < originalLength) { await saveBank(); renderManageList(); showToast("Question deleted successfully."); }
+            });
+        }
+
+        function toggleQuestions(id) { document.getElementById(id).classList.toggle('hidden'); }
+
+        function exportCSV() {
+            if (questionBank.length === 0) return showToast("No questions available to export.", "error");
+            
+            let csvContent = "Subject,Topic,Question Text,Option 1,Option 2,Option 3,Option 4,Option 5,Correct Answer (1-5),Explanation\n";
+            const escapeCSV = (field) => {
+                if (field == null) return "";
+                const str = String(field);
+                return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r') ? `"${str.replace(/"/g, '""')}"` : str;
+            };
+
+            questionBank.forEach(q => {
+                const row = [q.subject || "", q.topic || "", q.text || "", q.options[0] || "", q.options[1] || "", q.options[2] || "", q.options[3] || "", q.options[4] || "", (q.correctIndex !== undefined ? q.correctIndex + 1 : ""), q.explanation || ""];
+                csvContent += row.map(escapeCSV).join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute("href", url); a.setAttribute("download", `quizmaster_bank_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            showToast("Question Bank exported successfully!");
+        }
+
+        function importCSV(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const rows = parseCSV(e.target.result);
+                    if (rows.length < 2) throw new Error("CSV file is empty or missing data rows.");
+                    
+                    let importedCount = 0;
+                    rows.slice(1).forEach((row) => {
+                        while(row.length < 10) row.push("");
+                        const subject = row[0].trim() || 'Uncategorized', topic = row[1].trim() || 'General', qText = row[2].trim();
+                        const optionsRaw = [row[3].trim(), row[4].trim(), row[5].trim(), row[6].trim(), row[7].trim()];
+                        const correctStr = row[8].trim(), expl = row[9].trim();
+                        
+                        if (!qText || !optionsRaw[0] || !optionsRaw[1] || !correctStr) return; 
+                        
+                        const correctNum = parseInt(correctStr);
+                        if (isNaN(correctNum) || correctNum < 1 || correctNum > 5) return;
+                        
+                        const validOptions = optionsRaw.filter(o => o !== '');
+                        const correctIndex = correctNum - 1;
+                        if (correctIndex >= validOptions.length || correctIndex < 0) return;
+                        
+                        questionBank.push({ id: 'q_csv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5), subject: subject, topic: topic, text: qText, options: validOptions, correctIndex: correctIndex, explanation: expl });
+                        importedCount++;
+                    });
+                    
+                    if (importedCount === 0) throw new Error("No valid questions could be extracted.");
+                    await saveBank(); renderManageList(); showToast(`Successfully imported ${importedCount} questions!`);
+                } catch (err) { showToast("Failed to import CSV: " + err.message, "error"); }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(text) {
+            const rows = []; let currentRow = [], currentCell = '', inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (char === '"' && text[i+1] === '"') { currentCell += '"'; i++; } 
+                else if (char === '"') inQuotes = !inQuotes;
+                else if (char === ',' && !inQuotes) { currentRow.push(currentCell); currentCell = ''; } 
+                else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (char === '\r' && text[i+1] === '\n') i++;
+                    currentRow.push(currentCell);
+                    if (currentRow.some(c => c.trim() !== '')) rows.push(currentRow);
+                    currentRow = []; currentCell = '';
+                } else currentCell += char;
+            }
+            if (currentCell || currentRow.length > 0) {
+                currentRow.push(currentCell);
+                if (currentRow.some(c => c.trim() !== '')) rows.push(currentRow);
+            }
+            return rows;
+        }
+
+        function escapeHTML(str) {
+            return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+
+        // --- GLOBAL KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', (e) => {
+            // Ignore if the user is typing in an input field or text area (e.g. searching, creating questions)
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const isPractice = document.getElementById('take-quiz').classList.contains('active');
+            const isExam = document.getElementById('exam-active').classList.contains('active');
+
+            if (!isPractice && !isExam) return;
+
+            const key = e.key;
+
+            // Handle Number Keys for Options (1-5)
+            if (['1', '2', '3', '4', '5'].includes(key)) {
+                const index = parseInt(key) - 1;
+                
+                if (isPractice) {
+                    const question = activeSession.questions[currentQuestionIndex];
+                    if (question && index < question.options.length) selectOption(index);
+                } else if (isExam) {
+                    const question = activeSession.questions[currentQuestionIndex];
+                    if (question && index < question.options.length) {
+                        // Trigger the radio click directly to update UI
+                        const radios = document.querySelectorAll('input[name="exam-active-q-option"]');
+                        if(radios[index]) radios[index].click();
+                    }
+                }
+            }
+
+            // Handle Enter Key to proceed
+            if (key === 'Enter') {
+                if (isPractice) {
+                    if (!document.getElementById('next-btn').classList.contains('hidden')) nextQuestion();
+                    else if (!document.getElementById('submit-btn').classList.contains('hidden')) submitPractice();
+                } else if (isExam) {
+                    if (!document.getElementById('exam-next-btn').disabled) examNextQuestion();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
