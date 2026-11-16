@@ -201,6 +201,7 @@
                     <button onclick="switchView('home')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="home">Home</button>
                     <button onclick="switchView('practice')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="practice">Practice</button>
                     <button onclick="switchView('exam-list')" class="nav-btn border-transparent text-slate-500 hover:border-purple-500 hover:text-purple-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="exam-list">Exam Mode</button>
+                    <button onclick="switchView('history')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="history">History</button>
                     <button onclick="switchView('manage')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="manage">Manage Bank</button>
                     <button onclick="switchView('about')" class="nav-btn border-transparent text-slate-500 hover:border-brand-500 hover:text-brand-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors" data-target="about">About</button>
                     
@@ -231,6 +232,7 @@
                 <button onclick="switchView('home'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">Home</button>
                 <button onclick="switchView('practice'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">Practice Quizzes</button>
                 <button onclick="switchView('exam-list'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-600 w-full text-left transition-colors">Exam Mode</button>
+                <button onclick="switchView('history'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">History & Stats</button>
                 <button onclick="switchView('manage'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">Manage Bank</button>
                 <button onclick="switchView('about'); toggleMobileMenu()" class="block pl-4 pr-4 py-3 border-l-4 border-transparent text-base font-medium text-slate-600 hover:text-brand-700 hover:bg-brand-50 hover:border-brand-600 w-full text-left transition-colors">About & Guide</button>
                 <div class="px-4 mt-4">
@@ -421,6 +423,9 @@
                             <button onclick="retakeSession()" class="px-8 py-3 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors active:scale-95">
                                 <i class="fas fa-redo mr-2"></i> Retake <span id="retake-btn-text">Questions</span>
                             </button>
+                            <button id="review-answers-btn" onclick="renderReview()" class="hidden px-8 py-3 border-2 border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors active:scale-95">
+                                <i class="fas fa-search-plus mr-2"></i> Review
+                            </button>
                             <button id="browse-more-btn" onclick="switchView('practice')" class="px-8 py-3 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold rounded-xl transition-all shadow-md shadow-brand-500/30 active:scale-95">
                                 <i class="fas fa-list mr-2"></i> Browse More
                             </button>
@@ -555,6 +560,57 @@
             </div>
         </section>
 
+        <!-- ==================== REVIEW VIEW ==================== -->
+        <section id="review" class="view-section py-10 min-h-full bg-slate-50">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="review-title" class="text-2xl font-bold text-slate-900 tracking-tight">Review Answers</h2>
+                    <button onclick="switchView('quiz-result')" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg transition-colors shadow-sm text-sm">
+                        <i class="fas fa-arrow-left mr-1"></i> Back to Results
+                    </button>
+                </div>
+                <div id="review-container"></div>
+            </div>
+        </section>
+        
+        <!-- ==================== HISTORY VIEW ==================== -->
+        <section id="history" class="view-section py-10 min-h-full">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Exam History</h2>
+                    <p class="text-slate-500 mt-1">Review your past performance and track your progress over time.</p>
+                </div>
+                
+                <div id="history-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <!-- aggregate stats injected here -->
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
+                                    <th class="py-3 px-4 font-bold">Date</th>
+                                    <th class="py-3 px-4 font-bold">Exam</th>
+                                    <th class="py-3 px-4 font-bold">Score</th>
+                                    <th class="py-3 px-4 font-bold text-center">Breakdown</th>
+                                    <th class="py-3 px-4 font-bold">Accuracy</th>
+                                    <th class="py-3 px-4 font-bold">Time Taken</th>
+                                    <th class="py-3 px-4 font-bold text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-list-body" class="divide-y divide-slate-100">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="history-empty" class="hidden text-center py-16">
+                        <i class="fas fa-history text-4xl text-slate-300 mb-3 block"></i>
+                        <p class="text-slate-500 font-medium">No past exams found.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ==================== MANAGE BANK VIEW ==================== -->
         <section id="manage" class="view-section py-10 min-h-full">
             <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -563,14 +619,22 @@
                         <h2 class="text-3xl font-bold text-slate-900 tracking-tight break-words">Manage Question Bank</h2>
                         <p class="text-slate-500 mt-1 break-words">View all questions, organized by subject and topic, or remove them.</p>
                     </div>
-                    <div class="flex flex-wrap gap-3 shrink-0">
+                    <div class="flex flex-wrap gap-2 shrink-0 justify-end w-full sm:w-auto">
                         <input type="file" id="import-csv-file" class="hidden" accept=".csv" onchange="importCSV(event)">
-                        <button onclick="document.getElementById('import-csv-file').click()" class="flex-1 sm:flex-none px-5 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap active:scale-95">
-                            <i class="fas fa-file-import text-blue-600"></i> Import CSV
+                        <input type="file" id="import-backup-file" class="hidden" accept=".qm,.json" onchange="processRestore(event)">
+                        
+                        <button onclick="document.getElementById('import-csv-file').click()" class="px-3 py-2 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+                            <i class="fas fa-file-import text-blue-600 mr-1"></i> Import CSV
                         </button>
-
-                        <button onclick="exportCSV()" class="flex-1 sm:flex-none px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap active:scale-95">
-                            <i class="fas fa-file-export"></i> Export CSV
+                        <button onclick="exportCSV()" class="px-3 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors shadow-sm">
+                            <i class="fas fa-file-export mr-1"></i> Export CSV
+                        </button>
+                        <div class="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
+                        <button onclick="triggerRestoreBackup()" class="px-3 py-2 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm border-dashed">
+                            <i class="fas fa-upload text-purple-600 mr-1"></i> Restore (.qm)
+                        </button>
+                        <button onclick="exportBackup()" class="px-3 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-sm">
+                            <i class="fas fa-download mr-1"></i> Backup (.qm)
                         </button>
                     </div>
                 </div>
@@ -582,24 +646,6 @@
                             <i class="fas fa-search text-slate-400"></i>
                         </div>
                         <input type="text" id="manage-search" class="focus:ring-brand-500 focus:border-brand-500 block w-full pl-11 pr-4 py-3.5 sm:text-sm border-slate-300 rounded-xl border transition-colors shadow-sm bg-white" placeholder="Search by question text, subject, or topic..." onkeyup="filterManageList()">
-                    </div>
-                </div>
-
-                <div class="mb-10 bg-blue-50 border border-blue-200 rounded-xl p-6 text-sm text-blue-900 shadow-sm">
-                    <div class="flex items-start gap-4">
-                        <i class="fas fa-info-circle text-blue-600 text-2xl mt-0.5 shrink-0"></i>
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-blue-900 text-base mb-2 break-words">CSV Bulk Import Guide</h4>
-                            <p class="mb-3 break-words text-blue-800">To import questions into the bank via CSV, ensure your file uses the exact following header format as the first row:</p>
-                            <div class="bg-white border border-blue-200 rounded-md p-3 mb-4 overflow-x-auto shadow-sm">
-                                <code class="text-xs whitespace-nowrap text-slate-800 font-mono font-medium">Subject, Topic, Question Text, Option 1, Option 2, Option 3, Option 4, Option 5, Correct Answer (1-5), Explanation</code>
-                            </div>
-                            <ul class="list-disc pl-5 space-y-1.5 text-blue-800 break-words">
-                                <li><strong>Subject</strong> and <strong>Topic</strong> dynamically categorize questions for exams and practice.</li>
-                                <li><strong>Options:</strong> Provide at least 2 options. Leave Option 3, 4, or 5 blank if not needed.</li>
-                                <li><strong>Correct Answer:</strong> Must be a number (1-5) matching your correct option's position.</li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
 
@@ -643,107 +689,153 @@
 
         <!-- ==================== ABOUT / GUIDE VIEW ==================== -->
         <section id="about" class="view-section py-10 min-h-full">
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <!-- Header -->
                 <div class="mb-12 text-center pt-8">
-                    <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Welcome to QuizMaster</h2>
-                    <p class="text-lg text-slate-600 max-w-2xl mx-auto">Your comprehensive guide to mastering the platform, building an effective question bank, and securing your data.</p>
+                    <div class="inline-flex items-center justify-center px-4 py-1.5 mb-4 rounded-full bg-brand-50 text-brand-700 font-bold text-sm shadow-sm border border-brand-200">
+                        <i class="fas fa-rocket mr-2"></i> Elevate Your Learning
+                    </div>
+                    <h2 class="text-3xl sm:text-5xl font-extrabold text-slate-900 mb-5 tracking-tight">Welcome to QuizMaster</h2>
+                    <p class="text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">A professional-grade, locally-hosted assessment platform designed to help you build, manage, and master customized knowledge banks with uncompromised privacy and security.</p>
                 </div>
                 
-                <div class="space-y-8">
-                    <!-- What is QuizMaster? -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-info-circle text-brand-500 bg-brand-50 p-2 rounded-lg"></i> What is QuizMaster?</h3>
-                        <p class="text-slate-600 mb-4 leading-relaxed">In simple terms, QuizMaster is your personal, highly secure offline testing platform. Instead of creating fixed "quizzes," you build a single massive <strong>Question Bank</strong>. The app then acts like a smart tutor, letting you pull from this bank to practice casually or take strict, timed exams.</p>
-                        <p class="text-slate-600 leading-relaxed">Everything runs directly in your browser. No internet is required once the app is loaded, and your data never leaves your device.</p>
+                <!-- Core Features Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                    <!-- Knowledge Management -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow group">
+                        <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-2xl mb-6 border border-blue-100 group-hover:scale-110 transition-transform">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Dynamic Knowledge Bank</h3>
+                        <p class="text-slate-600 mb-4 text-sm leading-relaxed">Bypass static, pre-made quizzes. Build an infinitely scalable database of questions meticulously categorized by subject and topic using high-capacity IndexedDB storage.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 font-medium">
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Seamless CSV Bulk Imports & Exports</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Lightning-fast Live Search filtering</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Auto-categorization algorithms</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Advanced Assessment -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow group">
+                        <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-2xl mb-6 border border-purple-100 group-hover:scale-110 transition-transform">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Dual Assessment Engines</h3>
+                        <p class="text-slate-600 mb-4 text-sm leading-relaxed">Adapt the platform to your learning style. Toggle seamlessly between stress-free, feedback-oriented practice sessions and highly restrictive, timed examination environments.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 font-medium">
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> <strong>Practice:</strong> Instant explanations & answer feedback</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> <strong>Exam:</strong> Strict countdown timers & negative marking</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> <strong>Exam:</strong> Comprehensive post-test review breakdowns</li>
+                        </ul>
                     </div>
 
-                    <!-- Step-by-Step Workflow -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-route text-purple-500 bg-purple-50 p-2 rounded-lg"></i> How It Works (Step-by-Step)</h3>
-                        
-                        <div class="space-y-6">
-                            <div class="flex gap-4">
-                                <div class="flex-shrink-0 w-10 h-10 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-lg border border-brand-200">1</div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-slate-900 mb-1">Build Your Bank</h4>
-                                    <p class="text-sm text-slate-600">Go to <strong>Add Questions</strong> to type them in manually, or use the <strong>Manage Bank</strong> tab to import hundreds of questions at once using a CSV spreadsheet. Questions are automatically sorted by <em>Subject</em> and <em>Topic</em>.</p>
-                                </div>
+                    <!-- Security & Privacy -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow group">
+                        <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-2xl mb-6 border border-emerald-100 group-hover:scale-110 transition-transform">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Enterprise-Grade Security</h3>
+                        <p class="text-slate-600 mb-4 text-sm leading-relaxed">Your data never leaves your device. Apply military-grade encryption protocols to your local database to ensure your proprietary question banks remain strictly confidential.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 font-medium">
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> AES-256 local database encryption</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Master Password authentication gating</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Anti-Cheat module (disables copy/right-click)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Performance Tracking -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow group">
+                        <div class="w-14 h-14 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center text-2xl mb-6 border border-orange-100 group-hover:scale-110 transition-transform">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-3">Performance Analytics</h3>
+                        <p class="text-slate-600 mb-4 text-sm leading-relaxed">Turn your study sessions into actionable data. QuizMaster automatically tracks your history, identifying trends in your accuracy and time-management skills.</p>
+                        <ul class="space-y-2 text-sm text-slate-700 font-medium">
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Detailed historical exam logs</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Aggregate accuracy and scoring metrics</li>
+                            <li class="flex items-center gap-2"><i class="fas fa-check-circle text-brand-500"></i> Speed tracking (Average Time per Exam)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Technical Documentation / Guides -->
+                <div class="space-y-6 border-t border-slate-200 pt-10">
+                    <h3 class="text-2xl font-extrabold text-slate-900 mb-6 flex items-center gap-3">
+                        <i class="fas fa-book text-slate-400"></i> Technical Guides & Documentation
+                    </h3>
+
+                    <!-- CSV Integration Guide -->
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                        <div class="p-6 sm:p-8">
+                            <h4 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <i class="fas fa-file-csv text-green-600"></i> Data Integration: CSV Formatting
+                            </h4>
+                            <p class="text-slate-600 mb-5 text-sm leading-relaxed">
+                                To bulk import questions into your bank via the <strong>Manage Bank</strong> tab, your `.csv` file must perfectly match the internal schema. Use a spreadsheet tool (Excel/Google Sheets) and ensure the top row contains these exact headers:
+                            </p>
+                            <div class="bg-white border border-slate-200 rounded-xl p-4 overflow-x-auto shadow-sm mb-5">
+                                <code class="text-xs text-brand-700 font-mono font-bold whitespace-nowrap block">Subject, Topic, Question Text, Option 1, Option 2, Option 3, Option 4, Option 5, Correct Answer (1-5), Explanation</code>
                             </div>
-                            <div class="flex gap-4">
-                                <div class="flex-shrink-0 w-10 h-10 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-lg border border-brand-200">2</div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-slate-900 mb-1">Practice & Learn</h4>
-                                    <p class="text-sm text-slate-600">Go to the <strong>Practice</strong> tab, pick a topic, and start answering. It's stress-free: there is no timer, no negative marking, and you get instant feedback and explanations the moment you click an option.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-slate-700">
+                                <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                    <strong>Formatting Rules:</strong>
+                                    <ul class="list-disc pl-4 mt-2 space-y-1 text-slate-600 text-xs">
+                                        <li><strong>Subject & Topic:</strong> Used to dynamically categorize and filter questions.</li>
+                                        <li><strong>Correct Answer:</strong> Must be a numerical value (e.g., type <code>2</code> if Option 2 is correct).</li>
+                                    </ul>
                                 </div>
-                            </div>
-                            <div class="flex gap-4">
-                                <div class="flex-shrink-0 w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-lg border border-purple-200">3</div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-slate-900 mb-1">Take an Exam</h4>
-                                    <p class="text-sm text-slate-600">Ready for the real deal? Go to <strong>Exam Mode</strong>. You choose how many questions and how much time you want. The app will strictly enforce a countdown timer and apply negative marking (+3 for correct, -1 for wrong, 0 for skipped).</p>
+                                <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                    <strong>Handling Empty Fields:</strong>
+                                    <ul class="list-disc pl-4 mt-2 space-y-1 text-slate-600 text-xs">
+                                        <li>You must provide at least <strong>Option 1</strong> and <strong>Option 2</strong>.</li>
+                                        <li>Leave Options 3, 4, 5, or Explanations completely blank if they are not required.</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Manage & CSV Import Guide -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-file-csv text-green-500 bg-green-50 p-2 rounded-lg"></i> Import & Export Data</h3>
-                        <p class="text-slate-600 mb-4 leading-relaxed">You don't have to type questions one by one. You can use Excel or Google Sheets to create your question bank and import it in one click via the <strong>Manage Bank</strong> tab.</p>
-                        
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 mb-4 overflow-x-auto">
-                            <p class="text-sm font-bold text-slate-800 mb-2">CSV Required Header Format (First Row):</p>
-                            <code class="text-xs text-brand-700 font-mono whitespace-nowrap block bg-white p-3 rounded border border-slate-200">Subject, Topic, Question Text, Option 1, Option 2, Option 3, Option 4, Option 5, Correct Answer (1-5), Explanation</code>
-                        </div>
-                        <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
-                            <li><strong>Correct Answer:</strong> Must be a number. If Option 2 is correct, type <code>2</code>.</li>
-                            <li><strong>Empty Fields:</strong> If a question only has 3 options, just leave the Option 4 and 5 columns blank. Explanations are also optional.</li>
-                            <li><strong>Exporting:</strong> Click <strong>Export CSV</strong> at any time to download a backup spreadsheet of your entire encrypted bank.</li>
-                        </ul>
-                    </div>
-
-                    <!-- Security Feature Info -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-shield-alt text-blue-500 bg-blue-50 p-2 rounded-lg"></i> Security & Privacy</h3>
-                        <p class="text-slate-600 mb-6 leading-relaxed">Your data privacy and test integrity are prioritized. Even though data is stored on your device, it can be locked down.</p>
-                        <ul class="space-y-4 text-sm text-slate-700">
-                            <li class="flex gap-3"><i class="fas fa-lock text-brand-600 mt-1"></i> <div><strong>AES Encryption:</strong> Set a master password via the lock icon in the top right. Your local bank will be fully encrypted (AES) making it unreadable without the password.</div></li>
-                            <li class="flex gap-3"><i class="fas fa-database text-brand-600 mt-1"></i> <div><strong>High-Capacity Storage:</strong> Uses IndexedDB technology, allowing you to securely store tens of thousands of questions directly on your device without hitting typical browser limits.</div></li>
-                            <li class="flex gap-3"><i class="fas fa-user-shield text-brand-600 mt-1"></i> <div><strong>Exam Anti-Cheat:</strong> When Exam Mode is active, standard right-click menus and text-copy functions are automatically disabled to simulate a strict testing environment.</div></li>
-                        </ul>
-                    </div>
-
-                    <!-- App Installation (Android PWA) -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-2xl font-bold text-slate-900 mb-5 flex items-center gap-3"><i class="fas fa-mobile-alt text-green-500 bg-green-50 p-2 rounded-lg"></i> App Installation (Android)</h3>
-                        <p class="text-slate-600 mb-6 leading-relaxed">QuizMaster is built as a Progressive Web App (PWA). You can install it directly to your Android device for a full-screen, native app experience that works instantly.</p>
-                        
-                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm">
-                            <h4 class="font-bold text-slate-900 mb-4 text-lg"><i class="fas fa-download mr-2 text-slate-500"></i> How to Install</h4>
+                    <!-- PWA Deployment Guide -->
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                        <div class="p-6 sm:p-8">
+                            <h4 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <i class="fas fa-mobile-alt text-brand-600"></i> Cross-Platform PWA Installation
+                            </h4>
+                            <p class="text-slate-600 mb-5 text-sm leading-relaxed">
+                                QuizMaster is engineered as an offline-first Progressive Web App (PWA). By installing it directly to your device (iOS/Android/Desktop), you bypass the browser interface entirely for a native, full-screen application experience.
+                            </p>
                             
-                            <div id="pwa-file-warning" class="hidden mb-5 bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl text-sm font-medium flex gap-3 items-start shadow-sm">
+                            <div id="pwa-file-warning" class="hidden mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl text-sm font-medium flex gap-3 items-start shadow-sm">
                                 <i class="fas fa-exclamation-triangle mt-0.5 text-yellow-600 text-lg"></i> 
-                                <div><strong class="block mb-1 text-yellow-900">Local File Detected</strong>You are currently viewing this as a local file. PWA Installation requires a secure server. To install this app on Android, please host this file online over HTTPS (e.g., using GitHub Pages, Vercel, or Netlify).</div>
+                                <div><strong class="block mb-1 text-yellow-900">Local Environment Detected</strong>PWA Service Workers strictly require a secure origin (HTTPS). Because you are opening this file locally, installation prompts are suppressed. Please host this file to enable installation.</div>
                             </div>
 
-                            <ol class="list-decimal pl-5 space-y-3 text-sm text-slate-700">
-                                <li>Open this application using <strong>Google Chrome</strong> on your Android device. <em>(Note: It must be opened directly in a tab, not within an embedded preview or iframe)</em>.</li>
-                                <li>A popup notification should automatically appear at the bottom of your screen saying <strong>"Install QuizMaster"</strong>. Tap the Install button.</li>
-                                <li>If the popup doesn't appear, tap the <strong>3-dot menu</strong> <i class="fas fa-ellipsis-v mx-1 text-slate-400"></i> in the top-right corner of your Chrome browser.</li>
-                                <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong> from the dropdown menu.</li>
-                                <li>Once installed, you can launch QuizMaster directly from your phone's home screen or app drawer, just like a regular native application!</li>
-                            </ol>
-
-                            <div class="mt-6 border-t border-slate-200 pt-5">
-                                <h5 class="font-bold text-slate-900 mb-3 text-sm"><i class="fas fa-globe text-blue-500 mr-1.5"></i> How to get a free HTTPS link</h5>
-                                <p class="text-sm text-slate-600 mb-3">To open this app in HTTPS mode on your Android phone, you need to host this single HTML file online. Here is the easiest free method (takes 10 seconds):</p>
-                                <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
-                                    <li><strong>Netlify Drop (No account required):</strong> Create a new empty folder on your computer and place this `index.html` file inside it. Go to <a href="https://app.netlify.com/drop" target="_blank" class="text-brand-600 font-bold hover:underline">app.netlify.com/drop</a> on your computer and drag that folder onto the page. Netlify will instantly generate a live, secure HTTPS link. Open that link on your Android phone!</li>
-                                    <li><strong>GitHub Pages:</strong> If you use GitHub, create a repository, upload this file, and enable GitHub Pages in the settings for a permanent free HTTPS link.</li>
-                                </ul>
+                            <div class="space-y-4">
+                                <div class="flex gap-4 items-start">
+                                    <div class="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-700 flex-shrink-0 text-sm">1</div>
+                                    <div>
+                                        <h5 class="font-bold text-slate-900 text-sm">Host the Application (HTTPS)</h5>
+                                        <p class="text-xs text-slate-600 mt-1">To install, this single `index.html` file must be accessible via a secure web link. We recommend dragging and dropping the file into <a href="https://app.netlify.com/drop" target="_blank" class="text-brand-600 font-bold hover:underline">Netlify Drop</a> or deploying it via GitHub Pages for instant, free hosting.</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-700 flex-shrink-0 text-sm">2</div>
+                                    <div>
+                                        <h5 class="font-bold text-slate-900 text-sm">Trigger the Prompt</h5>
+                                        <p class="text-xs text-slate-600 mt-1">Open your newly generated HTTPS link in Google Chrome (Android/Desktop) or Safari (iOS). The browser will automatically detect the internal manifest and prompt you to "Install App" or "Add to Home Screen".</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4 items-start">
+                                    <div class="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-700 flex-shrink-0 text-sm">3</div>
+                                    <div>
+                                        <h5 class="font-bold text-slate-900 text-sm">Offline Execution</h5>
+                                        <p class="text-xs text-slate-600 mt-1">Once installed, the internal Service Worker aggressively caches the UI framework. You can now launch QuizMaster from your home screen and utilize 100% of its features without an internet connection.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </section>
@@ -798,6 +890,26 @@
         </div>
     </div>
 
+    <!-- Input Modal for Backup Passwords -->
+    <div id="input-modal" class="fixed inset-0 bg-slate-900/60 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100" id="input-modal-content">
+            <div class="p-8">
+                <div class="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mb-6 mx-auto text-2xl shadow-inner border border-blue-100">
+                    <i class="fas fa-key"></i>
+                </div>
+                <h3 class="text-xl font-bold text-center text-slate-900 mb-2" id="input-title">Enter Password</h3>
+                <p class="text-slate-500 text-center mb-6 text-sm" id="input-msg">Message</p>
+                <form id="input-modal-form" onsubmit="event.preventDefault(); submitInputModal();">
+                    <input type="password" id="input-modal-value" class="w-full bg-slate-50 border border-slate-300 py-3 px-4 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none mb-6 font-medium shadow-sm" placeholder="Password">
+                    <div class="flex gap-3 justify-center">
+                        <button type="button" id="input-cancel-btn" class="px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-bold transition-colors w-full active:scale-95">Cancel</button>
+                        <button type="submit" class="px-5 py-2.5 bg-brand-600 rounded-xl text-white hover:bg-brand-700 font-bold transition-colors w-full shadow-sm shadow-brand-500/30 active:scale-95">Proceed</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Logic -->
     <script>
         // --- DATA STRUCTURES & INITIAL STATE ---
@@ -814,6 +926,7 @@
         ];
 
         let questionBank = [];
+        let examHistory = [];
         
         // Security State
         let appPassword = null;
@@ -1056,6 +1169,15 @@
                 if (!decryptedStr) throw new Error("Invalid password");
                 
                 questionBank = JSON.parse(decryptedStr);
+                
+                // Also decrypt history
+                const storedHistEnc = await dbHelper.get('quizMaster_history_secured');
+                if (storedHistEnc) {
+                    const histBytes = CryptoJS.AES.decrypt(storedHistEnc, pwd);
+                    const histStr = histBytes.toString(CryptoJS.enc.Utf8);
+                    if(histStr) examHistory = JSON.parse(histStr);
+                }
+
                 appPassword = pwd;
                 document.getElementById('auth-overlay').classList.add('hidden');
                 
@@ -1094,6 +1216,11 @@
                     questionBank = [...DEFAULT_BANK];
                     await saveBank();
                 }
+                
+                const storedHist = await dbHelper.get('quizMaster_history');
+                if (storedHist) {
+                    try { examHistory = JSON.parse(storedHist); } catch(e) { examHistory = []; }
+                }
             }
         }
 
@@ -1117,6 +1244,22 @@
             } catch (e) {
                 console.error("Storage error:", e);
                 showToast("Failed to save data. Local storage might be full.", "error");
+            }
+        }
+
+        async function saveHistory() {
+            try {
+                const dataStr = JSON.stringify(examHistory);
+                if (appPassword) {
+                    const encrypted = CryptoJS.AES.encrypt(dataStr, appPassword).toString();
+                    await dbHelper.set('quizMaster_history_secured', encrypted);
+                    await dbHelper.remove('quizMaster_history');
+                } else {
+                    await dbHelper.set('quizMaster_history', dataStr);
+                    await dbHelper.remove('quizMaster_history_secured');
+                }
+            } catch(e) {
+                console.error("Error saving history:", e);
             }
         }
 
@@ -1180,11 +1323,13 @@
                     // Remove security
                     appPassword = null;
                     await saveBank();
+                    await saveHistory();
                     showToast("Security removed. Bank is now unencrypted.");
                 } else {
                     // Change password
                     appPassword = newPwdInput;
                     await saveBank();
+                    await saveHistory();
                     showToast("Master password updated successfully.");
                 }
             } else {
@@ -1195,6 +1340,7 @@
                 }
                 appPassword = newPwdInput;
                 await saveBank();
+                await saveHistory();
                 showToast("Security enabled! Your bank is now encrypted.");
             }
             
@@ -1205,6 +1351,8 @@
             if(confirm("WARNING: This will permanently delete all your encrypted questions and reset the app. This action CANNOT be undone. Proceed?")) {
                 await dbHelper.remove('quizMaster_bank');
                 await dbHelper.remove('quizMaster_bank_secured');
+                await dbHelper.remove('quizMaster_history');
+                await dbHelper.remove('quizMaster_history_secured');
                 localStorage.removeItem('quizMaster_is_secured');
                 location.reload();
             }
@@ -1233,7 +1381,7 @@
         function startApp() {
             document.body.classList.remove('overflow-hidden');
             const hash = window.location.hash.replace('#', '');
-            if(['home', 'practice', 'exam-list', 'create', 'manage', 'about'].includes(hash)) {
+            if(['home', 'practice', 'exam-list', 'create', 'manage', 'about', 'history'].includes(hash)) {
                 switchView(hash);
             } else {
                 switchView('home');
@@ -1265,6 +1413,7 @@
             if(viewId === 'practice') renderPracticeList();
             if(viewId === 'exam-list') populateExamConfig();
             if(viewId === 'manage') renderManageList();
+            if(viewId === 'history') renderHistory();
             
             // Fix: Handle block spawning cleanly during tab switches
             if(viewId === 'create' && questionBuilderCount === 0) {
@@ -1322,6 +1471,47 @@
 
             cancelBtn.onclick = closeModal;
             yesBtn.onclick = () => { closeModal(); onConfirm(); };
+        }
+
+        // --- CUSTOM INPUT MODAL ---
+        let onInputModalConfirm = null;
+        function showInputModal(title, msg, placeholder, isPassword, callback) {
+            const modal = document.getElementById('input-modal');
+            const content = document.getElementById('input-modal-content');
+            
+            document.getElementById('input-title').textContent = title;
+            document.getElementById('input-msg').textContent = msg;
+            const inputField = document.getElementById('input-modal-value');
+            inputField.placeholder = placeholder;
+            inputField.type = isPassword ? 'password' : 'text';
+            inputField.value = '';
+            
+            onInputModalConfirm = callback;
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+            
+            inputField.focus();
+
+            const cancelBtn = document.getElementById('input-cancel-btn');
+            cancelBtn.onclick = () => {
+                modal.classList.add('opacity-0');
+                content.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            };
+        }
+
+        function submitInputModal() {
+            const val = document.getElementById('input-modal-value').value;
+            const modal = document.getElementById('input-modal');
+            const content = document.getElementById('input-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            
+            if (onInputModalConfirm) onInputModalConfirm(val);
         }
 
         // --- DASHBOARD RENDER LOGIC ---
@@ -1519,6 +1709,8 @@
             
             setTimeout(() => {
                 document.getElementById('result-quiz-title').textContent = activeSession.title;
+                document.getElementById('review-answers-btn').classList.add('hidden');
+                
                 const msgEl = document.getElementById('result-message');
                 msgEl.innerHTML = '<div class="text-green-500 mb-4 text-5xl"><i class="fas fa-check-circle shadow-sm rounded-full"></i></div> Practice session complete! Keep up the good work.';
                 msgEl.className = 'text-2xl font-bold text-slate-800 mb-10 text-center';
@@ -1736,13 +1928,29 @@
             document.getElementById('score-achieved').textContent = marks;
             document.getElementById('score-total').textContent = maxMarks;
             
+            const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0;
+            
+            const historyEntry = {
+                date: new Date().toISOString(),
+                title: activeSession.title,
+                score: marks,
+                maxScore: maxMarks,
+                correct: correct,
+                wrong: wrong,
+                skipped: unattempted,
+                timeTaken: (activeSession.durationMins * 60) - examTimeRemaining
+            };
+            examHistory.unshift(historyEntry);
+            saveHistory();
+
+            document.getElementById('review-answers-btn').classList.remove('hidden');
+            
             const breakdown = document.getElementById('result-breakdown');
             breakdown.classList.remove('hidden'); breakdown.classList.add('flex');
             document.getElementById('res-correct').textContent = correct;
             document.getElementById('res-wrong').textContent = wrong;
             document.getElementById('res-unattempted').textContent = unattempted;
 
-            const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0;
             const msgEl = document.getElementById('result-message');
             
             if(percentage >= 90) { msgEl.innerHTML = 'Exceptional work! <i class="fas fa-star text-yellow-400"></i>'; msgEl.className = 'text-2xl font-black text-green-600 mb-10 text-center'; } 
@@ -1764,60 +1972,154 @@
             });
         }
 
-        // --- QUESTION CREATION LOGIC ---
+        function renderReview() {
+            switchView('review');
+            const container = document.getElementById('review-container');
+            container.innerHTML = '';
+            
+            document.getElementById('review-title').textContent = activeSession.title + " - Review";
+            
+            activeSession.questions.forEach((q, idx) => {
+                const userAnswer = userAnswers[idx];
+                const isCorrect = userAnswer === q.correctIndex;
+                const isSkipped = userAnswer === null;
+                
+                let statusBadge = isCorrect ? `<span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-0.5 rounded border border-green-200 shadow-sm flex items-center gap-1.5"><i class="fas fa-check"></i> Correct (+3)</span>` : 
+                                  isSkipped ? `<span class="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded border border-slate-200 shadow-sm flex items-center gap-1.5"><i class="fas fa-minus"></i> Skipped (0)</span>` :
+                                  `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded border border-red-200 shadow-sm flex items-center gap-1.5"><i class="fas fa-times"></i> Incorrect (-1)</span>`;
+                
+                let optionsHtml = q.options.map((opt, oIdx) => {
+                    let classes = "p-3 border rounded-xl text-sm mb-2 shadow-sm font-medium flex items-center gap-3 ";
+                    let icon = '';
+                    if (oIdx === q.correctIndex) {
+                        classes += "bg-green-50 border-green-500 text-green-800";
+                        icon = '<div class="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-check text-[10px]"></i></div>';
+                    } else if (oIdx === userAnswer) {
+                        classes += "bg-red-50 border-red-500 text-red-800";
+                        icon = '<div class="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-times text-[10px]"></i></div>';
+                    } else {
+                        classes += "bg-white border-slate-200 text-slate-600 opacity-60";
+                        icon = '<div class="w-5 h-5 rounded-full border-2 border-slate-200 flex-shrink-0 bg-slate-50"></div>';
+                    }
+                    return `<div class="${classes}">${icon} <div class="flex-1 min-w-0 break-words">${escapeHTML(opt)}</div></div>`;
+                }).join('');
+                
+                let expHtml = q.explanation ? `<div class="mt-4 bg-blue-50 border border-blue-100 text-blue-900 text-sm p-4 rounded-xl leading-relaxed shadow-sm"><span class="font-bold mb-1 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Explanation:</span>${escapeHTML(q.explanation)}</div>` : '';
+                
+                container.innerHTML += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start mb-5 gap-4">
+                            <h4 class="font-bold text-slate-900 text-lg flex-1 min-w-0 break-words"><span class="text-brand-500 mr-1 text-sm font-black">Q${idx + 1}.</span> ${escapeHTML(q.text)}</h4>
+                            <div class="flex-shrink-0">${statusBadge}</div>
+                        </div>
+                        <div class="mb-2">${optionsHtml}</div>
+                        ${expHtml}
+                    </div>
+                `;
+            });
+        }
+
+        // --- CREATE / ADD QUESTIONS LOGIC ---
         function addQuestionBlock() {
             questionBuilderCount++;
-            const qId = `qb_${Date.now()}_${questionBuilderCount}`;
             const container = document.getElementById('questions-builder-container');
-            const block = document.createElement('div');
-            block.className = "question-block bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 relative animation-fade-in";
-            block.id = qId;
             
+            const blockId = `q-block-${Date.now()}`;
+            const block = document.createElement('div');
+            block.id = blockId;
+            block.className = 'bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 relative q-builder-block transition-all';
+            
+            let removeBtn = '';
+            if (questionBuilderCount > 1) {
+                removeBtn = `<button type="button" onclick="removeQuestionBlock('${blockId}')" class="absolute right-4 top-4 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 w-10 h-10 flex items-center justify-center rounded-lg transition-colors"><i class="fas fa-trash"></i></button>`;
+            }
+
             block.innerHTML = `
-                <div class="flex flex-wrap justify-between items-center mb-6 border-b border-slate-100 pb-3 gap-2"><h4 class="font-extrabold text-slate-900 text-lg"><i class="fas fa-question-circle text-brand-500 mr-1"></i> New Question</h4><button type="button" onclick="removeQuestionBlock('${qId}')" class="text-red-600 bg-red-50 hover:bg-red-100 font-bold text-sm flex items-center gap-2 transition-colors px-3 py-1.5 rounded-lg active:scale-95" title="Remove Question"><i class="fas fa-trash"></i> <span class="hidden sm:inline">Remove</span></button></div>
-                <div class="space-y-5">
-                    <div class="flex flex-col sm:flex-row gap-5">
-                        <div class="flex-1 space-y-1"><label class="block text-sm font-bold text-slate-700">Subject <span class="text-red-500">*</span></label><input type="text" class="qb-sub w-full p-3 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm" placeholder="e.g., Mathematics" required></div>
-                        <div class="flex-1 space-y-1"><label class="block text-sm font-bold text-slate-700">Topic <span class="text-red-500">*</span></label><input type="text" class="qb-top w-full p-3 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm" placeholder="e.g., Algebra" required></div>
+                ${removeBtn}
+                <div class="mb-6 pb-6 border-b border-slate-100 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold">${questionBuilderCount}</div>
+                    <h3 class="text-lg font-bold text-slate-800">Question Details</h3>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1.5">Subject <span class="text-red-500">*</span></label>
+                            <input type="text" class="q-subject w-full bg-slate-50 border border-slate-300 py-3 px-4 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors" placeholder="e.g., Biology" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1.5">Topic / Chapter <span class="text-red-500">*</span></label>
+                            <input type="text" class="q-topic w-full bg-slate-50 border border-slate-300 py-3 px-4 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors" placeholder="e.g., Cell Structure" required>
+                        </div>
                     </div>
-                    <div class="space-y-1"><label class="block text-sm font-bold text-slate-700">Question Text <span class="text-red-500">*</span></label><input type="text" class="qb-text w-full p-3.5 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm" placeholder="What is...?" required></div>
-                    <div class="bg-brand-50/50 p-5 rounded-xl border border-brand-100"><label class="block text-sm font-bold text-slate-900 mb-3">Options & Correct Answer <span class="text-red-500">*</span></label><div class="space-y-3 pl-2 border-l-2 border-brand-200">
-                        ${[0,1,2,3,4].map(i => `<div class="flex items-center gap-3 w-full group"><input type="radio" name="correct_${qId}" value="${i}" class="w-5 h-5 text-brand-600 focus:ring-brand-500 cursor-pointer flex-shrink-0 border-slate-300 bg-white shadow-sm" ${i===0 ? 'checked' : ''} required><input type="text" class="qb-opt w-full flex-1 p-3 border border-slate-300 bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm min-w-0" placeholder="Option ${i+1} ${i<2?'(Required)': '(Optional)'}" ${i<2?'required':''}></div>`).join('')}
-                    </div></div>
-                    <div class="space-y-1"><label class="block text-sm font-bold text-slate-700">Explanation (Optional)</label><textarea class="qb-exp w-full p-3.5 border border-slate-300 bg-slate-50 focus:bg-white text-slate-900 font-medium rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-sm custom-scrollbar" rows="2" placeholder="Explain why the correct answer is right..."></textarea></div>
-                </div>`;
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">Question Text <span class="text-red-500">*</span></label>
+                        <textarea class="q-text w-full bg-slate-50 border border-slate-300 py-3 px-4 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors min-h-[100px] resize-y" placeholder="Type your question here..." required></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-3">Options & Correct Answer <span class="text-red-500">*</span></label>
+                        <p class="text-xs text-slate-500 mb-3">Provide at least 2 options. Select the radio button next to the correct answer.</p>
+                        <div class="space-y-3 pl-1 sm:pl-2">
+                            ${[1, 2, 3, 4, 5].map(num => `
+                                <div class="flex items-center gap-3">
+                                    <input type="radio" name="correct-${blockId}" value="${num - 1}" class="w-5 h-5 text-brand-600 focus:ring-brand-500 border-slate-300 cursor-pointer" ${num === 1 ? 'checked' : ''}>
+                                    <input type="text" class="q-opt w-full bg-white border border-slate-300 py-2.5 px-4 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none transition-colors" placeholder="Option ${num} ${num < 3 ? '(Required)' : '(Optional)'}" ${num < 3 ? 'required' : ''}>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">Explanation (Optional)</label>
+                        <textarea class="q-exp w-full bg-slate-50 border border-slate-300 py-3 px-4 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors min-h-[80px]" placeholder="Explain why the answer is correct..."></textarea>
+                    </div>
+                </div>
+            `;
             container.appendChild(block);
         }
 
         function removeQuestionBlock(id) {
-            if (document.querySelectorAll('.question-block').length <= 1) return showToast("You must add at least one question to save.", "error");
-            document.getElementById(id).remove();
+            const block = document.getElementById(id);
+            if (block) {
+                block.remove();
+                questionBuilderCount--;
+                const blocks = document.querySelectorAll('.q-builder-block');
+                blocks.forEach((b, index) => {
+                    b.querySelector('.rounded-full.bg-brand-100').textContent = index + 1;
+                });
+            }
         }
-
+        
         async function saveQuestions() {
-            const blocks = document.querySelectorAll('.question-block');
-            if(blocks.length === 0) return showToast("Add at least one question", "error");
-
-            const newQuestions = [];
+            const blocks = document.querySelectorAll('.q-builder-block');
             let isValid = true;
+            const newQuestions = [];
 
-            blocks.forEach(block => {
-                const subject = block.querySelector('.qb-sub').value.trim() || 'Uncategorized';
-                const topic = block.querySelector('.qb-top').value.trim() || 'General';
-                const text = block.querySelector('.qb-text').value.trim();
-                const exp = block.querySelector('.qb-exp').value.trim();
-                const optInputs = block.querySelectorAll('.qb-opt');
-                const correctRadio = block.querySelector(`input[type="radio"]:checked`);
+            blocks.forEach((block, bIndex) => {
+                if (!isValid) return; 
+
+                const subject = block.querySelector('.q-subject').value.trim();
+                const topic = block.querySelector('.q-topic').value.trim();
+                const text = block.querySelector('.q-text').value.trim();
+                const exp = block.querySelector('.q-exp').value.trim();
                 
-                if (!text) isValid = false;
+                const optInputs = block.querySelectorAll('.q-opt');
+                const correctRadio = block.querySelector('input[type="radio"]:checked');
+                
+                if (!subject || !topic || !text) {
+                    showToast(`Please fill all required fields in question ${bIndex + 1}`, "error");
+                    isValid = false; return;
+                }
 
                 const options = [];
                 optInputs.forEach(input => { if(input.value.trim()) options.push(input.value.trim()); });
 
-                if(options.length < 2) { showToast("Each question needs at least 2 filled options", "error"); isValid = false; return; }
+                if(options.length < 2) { showToast(`Question ${bIndex + 1} needs at least 2 options`, "error"); isValid = false; return; }
 
                 const selectedCorrectVal = parseInt(correctRadio.value);
-                if(!optInputs[selectedCorrectVal].value.trim()) { showToast("The selected correct answer cannot be blank.", "error"); isValid = false; return; }
+                if(!optInputs[selectedCorrectVal].value.trim()) { showToast(`The correct answer for question ${bIndex + 1} cannot be a blank option.`, "error"); isValid = false; return; }
 
                 const cleanOptions = []; let newCorrectIndex = 0, pushCount = 0;
                 optInputs.forEach((input, idx) => {
@@ -1841,9 +2143,100 @@
             showToast(`${newQuestions.length} question(s) added to bank!`);
             
             document.getElementById('questions-builder-container').innerHTML = '';
-            questionBuilderCount = 0; addQuestionBlock();
-            // Automatically switch back to manage bank so they can see their new questions
+            questionBuilderCount = 0; 
+            addQuestionBlock();
             switchView('manage');
+        }
+
+        // --- HISTORY RENDER LOGIC ---
+        function renderHistory() {
+            const tbody = document.getElementById('history-list-body');
+            const emptyState = document.getElementById('history-empty');
+            const stats = document.getElementById('history-stats');
+            
+            tbody.innerHTML = '';
+            
+            if (examHistory.length === 0) {
+                emptyState.classList.remove('hidden');
+                stats.innerHTML = '';
+                document.querySelector('#history table').parentElement.classList.add('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            document.querySelector('#history table').parentElement.classList.remove('hidden');
+            
+            let totalScore = 0, totalMax = 0, totalExams = examHistory.length, totalTime = 0;
+            
+            examHistory.forEach((ex, index) => {
+                totalScore += Math.max(0, ex.score);
+                totalMax += ex.maxScore;
+                totalTime += ex.timeTaken;
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                
+                const d = new Date(ex.date);
+                const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                const acc = ex.maxScore > 0 ? Math.round(Math.max(0, ex.score) / ex.maxScore * 100) : 0;
+                const m = Math.floor(ex.timeTaken / 60); const s = ex.timeTaken % 60;
+                const timeStr = `${m}m ${s}s`;
+                
+                tr.innerHTML = `
+                    <td class="py-4 px-4 text-sm text-slate-600 whitespace-nowrap">${dateStr}</td>
+                    <td class="py-4 px-4 text-sm font-semibold text-slate-800 break-words">${escapeHTML(ex.title)}</td>
+                    <td class="py-4 px-4 text-sm font-bold ${ex.score > 0 ? 'text-green-600' : 'text-slate-700'}">${ex.score}/${ex.maxScore}</td>
+                    <td class="py-4 px-4 text-sm whitespace-nowrap text-center">
+                        <span class="text-green-600 font-semibold" title="Correct"><i class="fas fa-check"></i> ${ex.correct || 0}</span>
+                        <span class="text-slate-300 mx-1">|</span>
+                        <span class="text-red-500 font-semibold" title="Wrong"><i class="fas fa-times"></i> ${ex.wrong || 0}</span>
+                    </td>
+                    <td class="py-4 px-4 text-sm text-slate-600 min-w-[120px]">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner"><div class="h-full bg-brand-500" style="width: ${Math.max(0, Math.min(100, acc))}%"></div></div>
+                            <span class="text-xs font-bold w-8 text-right">${acc}%</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-sm text-slate-500 whitespace-nowrap">${timeStr}</td>
+                    <td class="py-4 px-4 text-right">
+                        <button onclick="deleteHistoryEntry(${index})" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-2.5 py-1.5 rounded transition-colors active:scale-95" title="Delete Entry"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            const avgAcc = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+            const avgTime = totalExams > 0 ? Math.round(totalTime / totalExams) : 0;
+            const avgM = Math.floor(avgTime / 60); const avgS = avgTime % 60;
+            
+            stats.innerHTML = `
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1"><i class="fas fa-clipboard-list mr-1"></i> Total Exams</p>
+                    <p class="text-3xl font-black text-slate-800">${totalExams}</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1"><i class="fas fa-bullseye mr-1"></i> Avg Accuracy</p>
+                    <p class="text-3xl font-black text-brand-600">${avgAcc}%</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1"><i class="fas fa-question-circle mr-1"></i> Total Qs Attempted</p>
+                    <p class="text-3xl font-black text-purple-600">${totalMax / 3}</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1"><i class="fas fa-stopwatch mr-1"></i> Avg Time/Exam</p>
+                    <p class="text-3xl font-black text-emerald-600 tracking-tight">${avgM}m ${avgS}s</p>
+                </div>
+            `;
+        }
+
+        function deleteHistoryEntry(index) {
+            showConfirm("Delete History Entry?", "Are you sure you want to remove this exam from your history? This action cannot be undone.", async () => {
+                examHistory.splice(index, 1);
+                await saveHistory();
+                renderHistory();
+                showToast("History entry deleted successfully.");
+            });
         }
 
         // --- MANAGE BANK & IMPORT/EXPORT LOGIC ---
@@ -1935,7 +2328,75 @@
             const a = document.createElement('a');
             a.setAttribute("href", url); a.setAttribute("download", `quizmaster_bank_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-            showToast("Question Bank exported successfully!");
+            showToast("Question Bank exported as CSV!");
+        }
+        
+        // Custom Encrypted Backup/Restore
+        function exportBackup() {
+            showInputModal("Export Backup", "Enter a password to encrypt this backup (leave blank to export unencrypted):", "Encryption Password (Optional)", true, (pwd) => {
+                const data = { bank: questionBank, history: examHistory };
+                let content = JSON.stringify(data);
+                let filename = "quizmaster_backup_" + new Date().toISOString().slice(0,10);
+                
+                if (pwd) {
+                    content = CryptoJS.AES.encrypt(content, pwd).toString();
+                    filename += ".qm"; 
+                } else {
+                    filename += ".json";
+                }
+                
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+                showToast(pwd ? "Encrypted Backup (.qm) exported!" : "Unencrypted Backup (.json) exported!");
+            });
+        }
+        
+        function triggerRestoreBackup() {
+            document.getElementById('import-backup-file').click();
+        }
+
+        function processRestore(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result.trim();
+                if (content.startsWith('{') && content.endsWith('}')) {
+                    restoreData(content);
+                } else {
+                    showInputModal("Restore Backup", "This backup is encrypted. Enter the password to unlock it:", "Backup Password", true, (pwd) => {
+                        if (!pwd) return showToast("Password is required for encrypted backups.", "error");
+                        try {
+                            const bytes = CryptoJS.AES.decrypt(content, pwd);
+                            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+                            if (!decrypted) throw new Error("Invalid password");
+                            restoreData(decrypted);
+                        } catch(err) {
+                            showToast("Failed to decrypt. Wrong password or corrupted file.", "error");
+                        }
+                    });
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        
+        async function restoreData(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+                if (data.bank) questionBank = data.bank;
+                if (data.history) examHistory = data.history;
+                await saveBank();
+                await saveHistory();
+                showToast("Backup restored successfully!");
+                if(document.getElementById('manage').classList.contains('active')) renderManageList();
+                if(document.getElementById('history').classList.contains('active')) renderHistory();
+            } catch(e) {
+                showToast("Invalid backup file structure.", "error");
+            }
         }
 
         function importCSV(event) {
