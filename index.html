@@ -22,6 +22,9 @@
     <!-- CryptoJS for AES Encryption -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
+    <!-- html2pdf for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
@@ -446,6 +449,11 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
                     <form id="exam-config-form" onsubmit="event.preventDefault(); generateAndStartExam();" class="space-y-8">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div class="space-y-2 sm:col-span-2">
+                                <label class="block text-sm font-bold text-slate-700">Exam Name (Optional)</label>
+                                <input type="text" id="exam-name" placeholder="e.g., Midterm Practice, Chapter 5 Quiz..." class="w-full bg-white border border-slate-300 text-slate-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all shadow-sm font-medium hover:border-purple-300">
+                            </div>
+                            
                             <div class="space-y-2">
                                 <label class="block text-sm font-bold text-slate-700">Subject</label>
                                 <div class="relative">
@@ -542,15 +550,6 @@
                             <div id="exam-timer" class="text-5xl font-mono font-black text-slate-900 mt-2 tracking-tight">00:00</div>
                         </div>
                         
-                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center justify-between">
-                            Question Navigator
-                            <span class="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full" id="exam-palette-progress">0/10</span>
-                        </h4>
-                        
-                        <div id="exam-palette" class="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-5 gap-2 mb-8 max-h-48 overflow-y-auto lg:max-h-[300px] pr-1 custom-scrollbar">
-                            <!-- Palette buttons injected here -->
-                        </div>
-                        
                         <button onclick="confirmSubmitExam()" class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 shadow-md shadow-green-500/20 active:scale-95">
                             <i class="fas fa-check-double"></i> Submit Exam
                         </button>
@@ -565,9 +564,14 @@
             <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center mb-6">
                     <h2 id="review-title" class="text-2xl font-bold text-slate-900 tracking-tight">Review Answers</h2>
-                    <button onclick="switchView('quiz-result')" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg transition-colors shadow-sm text-sm">
-                        <i class="fas fa-arrow-left mr-1"></i> Back to Results
-                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="exportReviewPDF()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg transition-colors shadow-sm text-sm border border-red-200 flex items-center gap-2">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </button>
+                        <button onclick="switchView('quiz-result')" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg transition-colors shadow-sm text-sm flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Back to Results
+                        </button>
+                    </div>
                 </div>
                 <div id="review-container"></div>
             </div>
@@ -576,9 +580,21 @@
         <!-- ==================== HISTORY VIEW ==================== -->
         <section id="history" class="view-section py-10 min-h-full">
             <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="mb-8">
-                    <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Exam History</h2>
-                    <p class="text-slate-500 mt-1">Review your past performance and track your progress over time.</p>
+                <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Exam History</h2>
+                        <p class="text-slate-500 mt-1">Review your past performance and track your progress over time.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 shrink-0 justify-end w-full sm:w-auto">
+                        <input type="file" id="import-history-file" class="hidden" accept=".qmh,.json" onchange="processRestoreHistory(event)">
+                        
+                        <button onclick="document.getElementById('import-history-file').click()" class="px-3 py-2 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm border-dashed">
+                            <i class="fas fa-upload text-blue-600 mr-1"></i> Restore (.qmh)
+                        </button>
+                        <button onclick="exportHistoryBackup()" class="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm">
+                            <i class="fas fa-download mr-1"></i> Backup (.qmh)
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="history-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -621,7 +637,7 @@
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0 justify-end w-full sm:w-auto">
                         <input type="file" id="import-csv-file" class="hidden" accept=".csv" onchange="importCSV(event)">
-                        <input type="file" id="import-backup-file" class="hidden" accept=".qm,.json" onchange="processRestore(event)">
+                        <input type="file" id="import-bank-file" class="hidden" accept=".qmb,.json" onchange="processRestoreBank(event)">
                         
                         <button onclick="document.getElementById('import-csv-file').click()" class="px-3 py-2 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
                             <i class="fas fa-file-import text-blue-600 mr-1"></i> Import CSV
@@ -630,11 +646,11 @@
                             <i class="fas fa-file-export mr-1"></i> Export CSV
                         </button>
                         <div class="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
-                        <button onclick="triggerRestoreBackup()" class="px-3 py-2 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm border-dashed">
-                            <i class="fas fa-upload text-purple-600 mr-1"></i> Restore (.qm)
+                        <button onclick="document.getElementById('import-bank-file').click()" class="px-3 py-2 text-sm bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-sm border-dashed">
+                            <i class="fas fa-upload text-purple-600 mr-1"></i> Restore (.qmb)
                         </button>
-                        <button onclick="exportBackup()" class="px-3 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-sm">
-                            <i class="fas fa-download mr-1"></i> Backup (.qm)
+                        <button onclick="exportBankBackup()" class="px-3 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-sm">
+                            <i class="fas fa-download mr-1"></i> Backup (.qmb)
                         </button>
                     </div>
                 </div>
@@ -647,6 +663,14 @@
                         </div>
                         <input type="text" id="manage-search" class="focus:ring-brand-500 focus:border-brand-500 block w-full pl-11 pr-4 py-3.5 sm:text-sm border-slate-300 rounded-xl border transition-colors shadow-sm bg-white" placeholder="Search by question text, subject, or topic..." onkeyup="filterManageList()">
                     </div>
+                </div>
+
+                <!-- Bulk Actions Bar -->
+                <div id="bulk-actions" class="hidden bg-red-50 border border-red-200 px-4 py-3 rounded-xl mb-6 flex justify-between items-center shadow-sm transition-all">
+                    <span class="text-sm font-bold text-red-800"><i class="fas fa-check-square mr-2 opacity-70"></i><span id="bulk-count">0</span> questions selected</span>
+                    <button onclick="confirmBulkDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow-sm transition-colors active:scale-95 flex items-center gap-2">
+                        <i class="fas fa-trash-alt"></i> Delete Selected
+                    </button>
                 </div>
 
                 <div id="manage-list" class="space-y-6">
@@ -904,6 +928,51 @@
                     <div class="flex gap-3 justify-center">
                         <button type="button" id="input-cancel-btn" class="px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-bold transition-colors w-full active:scale-95">Cancel</button>
                         <button type="submit" class="px-5 py-2.5 bg-brand-600 rounded-xl text-white hover:bg-brand-700 font-bold transition-colors w-full shadow-sm shadow-brand-500/30 active:scale-95">Proceed</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Question Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform scale-95 transition-all duration-300 border border-slate-100 custom-scrollbar" id="edit-modal-content">
+            <div class="p-6 sm:p-8">
+                <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                    <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2"><i class="fas fa-edit text-brand-500"></i> Edit Question</h3>
+                    <button type="button" onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center transition-colors"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="edit-question-form" onsubmit="event.preventDefault(); saveEditedQuestion();">
+                    <input type="hidden" id="edit-q-id">
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">Subject <span class="text-red-500">*</span></label>
+                                <input type="text" id="edit-q-subject" class="w-full bg-slate-50 border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">Topic <span class="text-red-500">*</span></label>
+                                <input type="text" id="edit-q-topic" class="w-full bg-slate-50 border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Question Text <span class="text-red-500">*</span></label>
+                            <textarea id="edit-q-text" class="w-full bg-slate-50 border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none min-h-[80px]" required></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Options & Correct Answer <span class="text-red-500">*</span></label>
+                            <div class="space-y-2 pl-1" id="edit-options-container">
+                                <!-- Injected via JS -->
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Explanation</label>
+                            <textarea id="edit-q-exp" class="w-full bg-slate-50 border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none min-h-[60px]"></textarea>
+                        </div>
+                        <div class="flex gap-3 pt-4 border-t border-slate-100 mt-6">
+                            <button type="button" onclick="closeEditModal()" class="flex-1 py-3 bg-white border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-bold transition-colors active:scale-95 shadow-sm">Cancel</button>
+                            <button type="submit" class="flex-1 py-3 bg-brand-600 rounded-xl text-white hover:bg-brand-700 font-bold transition-colors shadow-sm active:scale-95">Save Changes</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -1735,7 +1804,6 @@
                 const mins = activeSession.durationMins || activeSession.questions.length;
                 examTimeRemaining = mins * 60; 
                 switchView('exam-active');
-                renderExamPalette();
                 renderExamQuestion();
                 startExamTimer();
             } else {
@@ -1781,6 +1849,7 @@
         }
 
         function generateAndStartExam() {
+            const customName = document.getElementById('exam-name').value.trim();
             const selSubject = document.getElementById('exam-subject').value;
             const selTopic = document.getElementById('exam-topic').value;
             const qCount = parseInt(document.getElementById('exam-q-count').value) || 10;
@@ -1800,9 +1869,11 @@
             }
 
             const selectedQuestions = pool.slice(0, Math.min(qCount, pool.length));
+            const examTitle = customName ? customName : `Custom Exam: ${selSubject === 'all' ? 'Mixed Subjects' : selSubject}`;
+
             activeSession = {
                 mode: 'exam',
-                title: `Custom Exam: ${selSubject === 'all' ? 'Mixed Subjects' : selSubject}`,
+                title: examTitle,
                 durationMins: durationMins,
                 questions: selectedQuestions
             };
@@ -1814,10 +1885,12 @@
             document.getElementById('exam-title').textContent = activeSession.title;
             document.getElementById('exam-total-q-num').textContent = activeSession.questions.length;
             
+            // Reset the input field for next time
+            document.getElementById('exam-name').value = '';
+            
             showToast(`Generated exam with ${selectedQuestions.length} questions! Security features active.`);
             
             switchView('exam-active');
-            renderExamPalette();
             renderExamQuestion();
             startExamTimer();
         }
@@ -1847,41 +1920,23 @@
 
         function examSelectOption(index) {
             userAnswers[currentQuestionIndex] = index;
-            renderExamPalette();
         }
 
-        function renderExamPalette() {
-            const palette = document.getElementById('exam-palette');
-            palette.innerHTML = '';
-            let answeredCount = 0;
-
-            activeSession.questions.forEach((_, idx) => {
-                const btn = document.createElement('button');
-                const isAnswered = userAnswers[idx] !== null;
-                const isCurrent = idx === currentQuestionIndex;
-                if(isAnswered) answeredCount++;
-
-                let baseClass = "w-10 h-10 sm:w-11 sm:h-11 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center transition-colors border shadow-sm ";
-                if (isCurrent) baseClass += "bg-purple-600 text-white border-purple-600 ring-4 ring-purple-200 ring-offset-1";
-                else if (isAnswered) baseClass += "bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200";
-                else baseClass += "bg-white text-slate-600 border-slate-300 hover:bg-slate-50";
-
-                btn.className = baseClass;
-                btn.textContent = idx + 1;
-                btn.onclick = () => jumpToExamQuestion(idx);
-                palette.appendChild(btn);
-            });
-            document.getElementById('exam-palette-progress').textContent = `${answeredCount}/${activeSession.questions.length}`;
+        function examPrevQuestion() { 
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderExamQuestion();
+                document.getElementById('main-content').scrollTo({top: 0, behavior: 'smooth'});
+            }
         }
-
-        function jumpToExamQuestion(index) {
-            currentQuestionIndex = index;
-            renderExamQuestion(); renderExamPalette();
-            document.getElementById('main-content').scrollTo({top: 0, behavior: 'smooth'});
+        
+        function examNextQuestion() { 
+            if (currentQuestionIndex < activeSession.questions.length - 1) {
+                currentQuestionIndex++;
+                renderExamQuestion();
+                document.getElementById('main-content').scrollTo({top: 0, behavior: 'smooth'});
+            }
         }
-
-        function examPrevQuestion() { if (currentQuestionIndex > 0) jumpToExamQuestion(currentQuestionIndex - 1); }
-        function examNextQuestion() { if (currentQuestionIndex < activeSession.questions.length - 1) jumpToExamQuestion(currentQuestionIndex + 1); }
 
         function startExamTimer() {
             const timerEl = document.getElementById('exam-timer');
@@ -2252,6 +2307,9 @@
             const tree = {};
             let matchCount = 0;
             
+            // Reset bulk actions state when rendering list
+            document.getElementById('bulk-actions').classList.add('hidden');
+            
             questionBank.forEach(q => {
                 // Apply search filter
                 if (searchTerm) {
@@ -2280,22 +2338,148 @@
                     const qList = tree[sub][top];
                     const topicId = `topic-${Math.random().toString(36).substr(2, 9)}`;
                     let questionsHtml = qList.map((item, idx) => `
-                        <div class="py-5 border-b border-slate-100 last:border-0 relative group">
-                            <button onclick="confirmDeleteQuestion('${item.id}')" class="absolute right-0 top-5 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-2 py-1.5 rounded transition-colors active:scale-95" title="Delete Question"><i class="fas fa-trash-alt"></i></button>
-                            <p class="text-sm font-bold text-slate-800 break-words mb-3 pr-10 leading-relaxed"><span class="text-slate-400 mr-2">${idx + 1}.</span> ${escapeHTML(item.text)}</p>
-                            <ul class="text-sm font-medium text-slate-600 space-y-1.5 pl-6 list-disc marker:text-slate-300 break-words">
-                                ${item.options.map((o, i) => `<li class="${i === item.correctIndex ? 'text-green-700 font-bold marker:text-green-500' : ''}">${escapeHTML(o)} ${i === item.correctIndex ? '<i class="fas fa-check-circle text-green-500 ml-1"></i>' : ''}</li>`).join('')}
-                            </ul>
-                            ${item.explanation ? `<div class="mt-4 text-sm font-medium text-slate-700 bg-blue-50 p-4 rounded-lg border border-blue-100"><span class="font-bold text-blue-800 block mb-1">Explanation:</span> ${escapeHTML(item.explanation)}</div>` : ''}
+                        <div class="py-5 border-b border-slate-100 last:border-0 relative group flex gap-3 sm:gap-4 items-start hover:bg-slate-50/50 transition-colors px-4 -mx-4 rounded-lg">
+                            <div class="pt-0.5 flex-shrink-0">
+                                <input type="checkbox" class="bulk-q-checkbox w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer" value="${item.id}" onchange="updateBulkSelection()">
+                            </div>
+                            <div class="flex-1 min-w-0 relative">
+                                <div class="absolute right-0 top-0 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-white sm:bg-transparent pl-2 sm:pl-0">
+                                    <button onclick="openEditModal('${item.id}')" class="text-slate-500 hover:text-blue-600 bg-white sm:bg-slate-100 hover:bg-blue-50 w-8 h-8 rounded-lg flex items-center justify-center transition-colors active:scale-95 shadow-sm border border-slate-200" title="Edit Question"><i class="fas fa-edit"></i></button>
+                                    <button onclick="confirmDeleteQuestion('${item.id}')" class="text-slate-500 hover:text-red-500 bg-white sm:bg-slate-100 hover:bg-red-50 w-8 h-8 rounded-lg flex items-center justify-center transition-colors active:scale-95 shadow-sm border border-slate-200" title="Delete Question"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                                <p class="text-sm font-bold text-slate-800 break-words mb-3 pr-20 leading-relaxed"><span class="text-slate-400 mr-1 text-xs uppercase tracking-wider">Q${idx + 1}.</span> ${escapeHTML(item.text)}</p>
+                                <ul class="text-sm font-medium text-slate-600 space-y-1.5 pl-5 list-disc marker:text-slate-300 break-words">
+                                    ${item.options.map((o, i) => `<li class="${i === item.correctIndex ? 'text-green-700 font-bold marker:text-green-500' : ''}">${escapeHTML(o)} ${i === item.correctIndex ? '<i class="fas fa-check-circle text-green-500 ml-1"></i>' : ''}</li>`).join('')}
+                                </ul>
+                                ${item.explanation ? `<div class="mt-4 text-sm font-medium text-slate-700 bg-blue-50/50 p-3 rounded-lg border border-blue-100/50"><span class="font-bold text-blue-800 block mb-1 text-xs uppercase tracking-wider">Explanation:</span> ${escapeHTML(item.explanation)}</div>` : ''}
+                            </div>
                         </div>
                     `).join('');
 
                     topicsHtml += `<div class="border-t border-slate-100 first:border-0"><div class="p-4 bg-slate-50 hover:bg-slate-100 cursor-pointer flex justify-between items-center transition-colors" onclick="toggleQuestions('${topicId}')"><h4 class="font-bold text-slate-800 truncate pr-2"><i class="fas fa-folder text-brand-500 mr-2"></i>${escapeHTML(top)}</h4><span class="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1 rounded-full whitespace-nowrap shadow-sm">${qList.length} Qs</span></div><div id="${topicId}" class="${searchTerm ? '' : 'hidden'} p-4 sm:p-6 bg-white border-t border-slate-100">${questionsHtml}</div></div>`;
                 });
 
-                subDiv.innerHTML = `<div class="p-4 sm:p-6 bg-slate-900 text-white flex justify-between items-center rounded-t-2xl"><h3 class="text-lg font-extrabold flex items-center gap-3 truncate pr-2"><i class="fas fa-book-open text-brand-400"></i> ${escapeHTML(sub)}</h3></div><div>${topicsHtml}</div>`;
+                subDiv.innerHTML = `<div class="p-4 sm:p-5 bg-slate-800 text-white flex justify-between items-center rounded-t-2xl"><h3 class="text-lg font-bold flex items-center gap-3 truncate pr-2"><i class="fas fa-book-open text-brand-400"></i> ${escapeHTML(sub)}</h3></div><div>${topicsHtml}</div>`;
                 list.appendChild(subDiv);
             });
+        }
+
+        // Bulk Delete Functions
+        function updateBulkSelection() {
+            const checkboxes = document.querySelectorAll('.bulk-q-checkbox:checked');
+            const bulkBar = document.getElementById('bulk-actions');
+            const countDisplay = document.getElementById('bulk-count');
+            
+            if (checkboxes.length > 0) {
+                countDisplay.textContent = checkboxes.length;
+                bulkBar.classList.remove('hidden');
+            } else {
+                bulkBar.classList.add('hidden');
+            }
+        }
+
+        function confirmBulkDelete() {
+            const checkboxes = document.querySelectorAll('.bulk-q-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            
+            showConfirm("Delete Selected?", `Are you sure you want to permanently delete ${checkboxes.length} selected question(s)?`, async () => {
+                const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+                const originalLength = questionBank.length;
+                
+                questionBank = questionBank.filter(q => !idsToDelete.includes(q.id));
+                
+                if (questionBank.length < originalLength) { 
+                    await saveBank(); 
+                    document.getElementById('manage-search').value = ''; // Clear search on bulk delete
+                    renderManageList(); 
+                    showToast(`${idsToDelete.length} question(s) deleted successfully.`); 
+                }
+            });
+        }
+
+        // Edit Question Functions
+        function openEditModal(qId) {
+            const q = questionBank.find(q => q.id === qId);
+            if (!q) return;
+
+            document.getElementById('edit-q-id').value = q.id;
+            document.getElementById('edit-q-subject').value = q.subject || '';
+            document.getElementById('edit-q-topic').value = q.topic || '';
+            document.getElementById('edit-q-text').value = q.text || '';
+            document.getElementById('edit-q-exp').value = q.explanation || '';
+
+            let optionsHtml = '';
+            for (let i = 0; i < 5; i++) {
+                const optVal = q.options[i] || '';
+                const isChecked = (i === q.correctIndex) ? 'checked' : '';
+                const req = i < 2 ? 'required' : '';
+                const ph = `Option ${i+1} ${i<2 ? '(Required)' : '(Optional)'}`;
+                optionsHtml += `
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="edit-q-correct" value="${i}" class="w-4 h-4 text-brand-600 focus:ring-brand-500 border-slate-300 cursor-pointer" ${isChecked}>
+                        <input type="text" id="edit-q-opt-${i}" class="w-full bg-white border border-slate-300 py-2.5 px-3 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm transition-colors" value="${escapeHTML(optVal)}" placeholder="${ph}" ${req}>
+                    </div>
+                `;
+            }
+            document.getElementById('edit-options-container').innerHTML = optionsHtml;
+
+            const modal = document.getElementById('edit-modal');
+            const content = document.getElementById('edit-modal-content');
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-modal');
+            const content = document.getElementById('edit-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        async function saveEditedQuestion() {
+            const qId = document.getElementById('edit-q-id').value;
+            const subject = document.getElementById('edit-q-subject').value.trim();
+            const topic = document.getElementById('edit-q-topic').value.trim();
+            const text = document.getElementById('edit-q-text').value.trim();
+            const exp = document.getElementById('edit-q-exp').value.trim();
+            
+            const correctRadio = document.querySelector('input[name="edit-q-correct"]:checked');
+            
+            if(!subject || !topic || !text) return showToast("Please fill all required fields.", "error");
+
+            const optInputs = [0,1,2,3,4].map(i => document.getElementById(`edit-q-opt-${i}`));
+            const options = [];
+            optInputs.forEach(input => { if(input.value.trim()) options.push(input.value.trim()); });
+            
+            if(options.length < 2) return showToast("Question needs at least 2 options.", "error");
+            
+            const selectedCorrectVal = parseInt(correctRadio.value);
+            if(!optInputs[selectedCorrectVal].value.trim()) return showToast("The correct answer cannot be a blank option.", "error");
+
+            const cleanOptions = []; let newCorrectIndex = 0, pushCount = 0;
+            optInputs.forEach((input, idx) => {
+                if(input.value.trim()) {
+                    cleanOptions.push(input.value.trim());
+                    if(idx === selectedCorrectVal) newCorrectIndex = pushCount;
+                    pushCount++;
+                }
+            });
+
+            const index = questionBank.findIndex(q => q.id === qId);
+            if(index !== -1) {
+                questionBank[index] = {
+                    id: qId, subject: subject, topic: topic, text: text, options: cleanOptions, correctIndex: newCorrectIndex, explanation: exp
+                };
+                await saveBank();
+                closeEditModal();
+                
+                // Re-render the list maintaining the current search filter
+                renderManageList(document.getElementById('manage-search').value.toLowerCase());
+                showToast("Question updated successfully.");
+            }
         }
 
         function confirmDeleteQuestion(qId) {
@@ -2331,49 +2515,75 @@
             showToast("Question Bank exported as CSV!");
         }
         
-        // Custom Encrypted Backup/Restore
-        function exportBackup() {
-            showInputModal("Export Backup", "Enter a password to encrypt this backup (leave blank to export unencrypted):", "Encryption Password (Optional)", true, (pwd) => {
-                const data = { bank: questionBank, history: examHistory };
+        // --- SEPARATED ENCRYPTED BACKUP & RESTORE LOGIC ---
+        
+        function exportBankBackup() {
+            showInputModal("Export Bank Backup", "Enter a password to encrypt this Bank backup (leave blank to export unencrypted):", "Encryption Password (Optional)", true, (pwd) => {
+                const data = { bank: questionBank };
                 let content = JSON.stringify(data);
-                let filename = "quizmaster_backup_" + new Date().toISOString().slice(0,10);
+                let filename = "quizmaster_bank_" + new Date().toISOString().slice(0,10);
                 
                 if (pwd) {
                     content = CryptoJS.AES.encrypt(content, pwd).toString();
-                    filename += ".qm"; 
+                    filename += ".qmb"; 
                 } else {
                     filename += ".json";
                 }
                 
-                const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = filename;
-                document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-                showToast(pwd ? "Encrypted Backup (.qm) exported!" : "Unencrypted Backup (.json) exported!");
+                downloadFile(content, filename, pwd ? "Encrypted Bank Backup (.qmb) exported!" : "Unencrypted Bank Backup (.json) exported!");
             });
         }
-        
-        function triggerRestoreBackup() {
-            document.getElementById('import-backup-file').click();
+
+        function exportHistoryBackup() {
+            showInputModal("Export History Backup", "Enter a password to encrypt this History backup (leave blank to export unencrypted):", "Encryption Password (Optional)", true, (pwd) => {
+                const data = { history: examHistory };
+                let content = JSON.stringify(data);
+                let filename = "quizmaster_history_" + new Date().toISOString().slice(0,10);
+                
+                if (pwd) {
+                    content = CryptoJS.AES.encrypt(content, pwd).toString();
+                    filename += ".qmh"; 
+                } else {
+                    filename += ".json";
+                }
+                
+                downloadFile(content, filename, pwd ? "Encrypted History Backup (.qmh) exported!" : "Unencrypted History Backup (.json) exported!");
+            });
         }
 
-        function processRestore(event) {
+        function downloadFile(content, filename, toastMsg) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            showToast(toastMsg);
+        }
+
+        function processRestoreBank(event) {
+            handleRestoreEvent(event, "Restore Bank Backup", restoreBankData);
+        }
+
+        function processRestoreHistory(event) {
+            handleRestoreEvent(event, "Restore History Backup", restoreHistoryData);
+        }
+
+        function handleRestoreEvent(event, modalTitle, restoreFunction) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (e) => {
                 const content = e.target.result.trim();
                 if (content.startsWith('{') && content.endsWith('}')) {
-                    restoreData(content);
+                    restoreFunction(content);
                 } else {
-                    showInputModal("Restore Backup", "This backup is encrypted. Enter the password to unlock it:", "Backup Password", true, (pwd) => {
+                    showInputModal(modalTitle, "This backup is encrypted. Enter the password to unlock it:", "Backup Password", true, (pwd) => {
                         if (!pwd) return showToast("Password is required for encrypted backups.", "error");
                         try {
                             const bytes = CryptoJS.AES.decrypt(content, pwd);
                             const decrypted = bytes.toString(CryptoJS.enc.Utf8);
                             if (!decrypted) throw new Error("Invalid password");
-                            restoreData(decrypted);
+                            restoreFunction(decrypted);
                         } catch(err) {
                             showToast("Failed to decrypt. Wrong password or corrupted file.", "error");
                         }
@@ -2384,18 +2594,41 @@
             event.target.value = '';
         }
         
-        async function restoreData(jsonString) {
+        async function restoreBankData(jsonString) {
             try {
                 const data = JSON.parse(jsonString);
-                if (data.bank) questionBank = data.bank;
-                if (data.history) examHistory = data.history;
+                if (data.bank) {
+                    questionBank = data.bank;
+                } else if (Array.isArray(data)) {
+                    // Fallback for raw arrays
+                    questionBank = data;
+                } else {
+                    throw new Error("Missing bank data");
+                }
                 await saveBank();
-                await saveHistory();
-                showToast("Backup restored successfully!");
+                showToast("Question Bank restored successfully!");
                 if(document.getElementById('manage').classList.contains('active')) renderManageList();
+            } catch(e) {
+                showToast("Invalid bank backup file structure.", "error");
+            }
+        }
+
+        async function restoreHistoryData(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+                if (data.history) {
+                    examHistory = data.history;
+                } else if (Array.isArray(data)) {
+                    // Fallback for raw arrays
+                    examHistory = data;
+                } else {
+                    throw new Error("Missing history data");
+                }
+                await saveHistory();
+                showToast("Exam History restored successfully!");
                 if(document.getElementById('history').classList.contains('active')) renderHistory();
             } catch(e) {
-                showToast("Invalid backup file structure.", "error");
+                showToast("Invalid history backup file structure.", "error");
             }
         }
 
@@ -2458,6 +2691,56 @@
 
         function escapeHTML(str) {
             return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+
+        // --- PDF EXPORT LOGIC ---
+        function exportReviewPDF() {
+            showToast("Generating PDF report... Please wait.");
+            
+            // Create an isolated container for the PDF content
+            const pdfContainer = document.createElement('div');
+            pdfContainer.style.padding = '20px';
+            pdfContainer.style.fontFamily = 'Inter, sans-serif';
+            pdfContainer.style.backgroundColor = '#f8fafc';
+            
+            // Extract the user's score from the hidden result view
+            const marks = document.getElementById('score-achieved').textContent;
+            const total = document.getElementById('score-total').textContent;
+            
+            // Build a structured header for the PDF document
+            const headerHtml = `
+                <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px;">
+                    <h1 style="font-size: 24px; font-weight: bold; margin: 0 0 8px 0; color: #0f172a;">${escapeHTML(activeSession.title)}</h1>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; color: #475569; font-weight: 600;">
+                        <span><strong>Score:</strong> ${marks} / ${total}</span>
+                        <span><strong>Total Questions:</strong> ${activeSession.questions.length}</span>
+                        <span><strong>Date:</strong> ${new Date().toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Clone the existing review container elements
+            const reviewClone = document.getElementById('review-container').cloneNode(true);
+            
+            pdfContainer.innerHTML = headerHtml;
+            pdfContainer.appendChild(reviewClone);
+            
+            // Configuration options for html2pdf
+            const opt = {
+                margin:       [10, 10, 10, 10], // top, left, bottom, right
+                filename:     `QuizMaster_Report_${activeSession.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            // Generate and save
+            html2pdf().set(opt).from(pdfContainer).save().then(() => {
+                showToast("PDF exported successfully!");
+            }).catch(err => {
+                console.error("PDF generation error: ", err);
+                showToast("Failed to generate PDF.", "error");
+            });
         }
 
         // --- GLOBAL KEYBOARD SHORTCUTS ---
